@@ -1,0 +1,12 @@
+<Application x:Class="AutoClickKey.App"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:helpers="clr-namespace:AutoClickKey.Helpers"
+             StartupUri="MainWindow.xaml">
+    <Application.Resources>
+        <helpers:InverseBoolConverter x:Key="InverseBoolConverter"/>
+        <helpers:StartStopTextConverter x:Key="StartStopTextConverter"/>
+        <helpers:RecordButtonTextConverter x:Key="RecordButtonTextConverter"/>
+        <helpers:IndexToVisibilityConverter x:Key="IndexToVisibilityConverter"/>
+    </Application.Resources>
+</Application>
