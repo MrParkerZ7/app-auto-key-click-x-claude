@@ -100,25 +100,23 @@ dotnet build -c Release
 
 ```
 AutoClickKey/
-├── src/
-│   ├── AutoClickKey/              # Main WPF Application
-│   │   ├── Views/                 # XAML Views
-│   │   ├── ViewModels/            # MVVM ViewModels
-│   │   ├── Models/                # Data Models
-│   │   ├── Services/              # Core Services
-│   │   │   ├── ClickerService.cs
-│   │   │   ├── KeyboardService.cs
-│   │   │   ├── RecorderService.cs
-│   │   │   ├── HotkeyService.cs
-│   │   │   └── ProfileService.cs
-│   │   ├── Helpers/               # Utility Classes
-│   │   │   └── Win32Api.cs        # Windows API Interop
-│   │   ├── Themes/                # Dark/Light Themes
-│   │   └── App.xaml
-│   └── AutoClickKey.Tests/        # Unit Tests
-├── docs/                          # Documentation
+├── src/AutoClickKey/              # Main WPF Application
+│   ├── ViewModels/                # MVVM ViewModels
+│   ├── Models/                    # Data Models
+│   ├── Services/                  # Core Services
+│   │   ├── ClickerService.cs      # Mouse automation
+│   │   ├── KeyboardService.cs     # Keyboard automation
+│   │   ├── RecorderService.cs     # Record & playback
+│   │   ├── HotkeyService.cs       # Global hotkeys
+│   │   └── ProfileService.cs      # Profile management
+│   ├── Helpers/                   # Utility Classes
+│   │   ├── Win32Api.cs            # Windows API Interop
+│   │   ├── RelayCommand.cs        # MVVM commands
+│   │   └── Converters.cs          # XAML converters
+│   ├── MainWindow.xaml            # Main UI
+│   └── App.xaml
 ├── README.md
-├── LICENSE
+├── CLAUDE.md                      # Development guide
 └── AutoClickKey.sln
 ```
 
@@ -132,11 +130,11 @@ AutoClickKey/
 ## Roadmap
 
 - [x] Project Setup
-- [ ] Core Auto Clicker functionality
-- [ ] Core Auto Keyboard functionality
-- [ ] Global Hotkey system
-- [ ] Record & Playback
-- [ ] Profile management
+- [x] Core Auto Clicker functionality
+- [x] Core Auto Keyboard functionality
+- [x] Global Hotkey system
+- [x] Record & Playback
+- [x] Profile management
 - [ ] Dark/Light theme
 - [ ] System tray integration
 - [ ] Settings persistence
