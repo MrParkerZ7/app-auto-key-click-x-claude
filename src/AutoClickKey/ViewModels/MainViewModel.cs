@@ -128,7 +128,7 @@ public class MainViewModel : ViewModelBase, IDisposable
         set => SetProperty(ref _loopActions, value);
     }
 
-    private int _loopCount;
+    private int _loopCount = 10;
     public int LoopCount
     {
         get => _loopCount;
@@ -247,7 +247,6 @@ public class MainViewModel : ViewModelBase, IDisposable
             Type = ActionItemType.Click,
             MouseButton = 0,
             ClickType = 0,
-            UseCurrentPosition = true,
             DelayMs = 100
         };
         Actions.Add(action);

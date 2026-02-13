@@ -65,20 +65,10 @@
 
         <!-- Header -->
         <Border Grid.Row="0" Background="#2D2D30" Padding="10">
-            <Grid>
-                <TextBlock Text="AutoClickKey"
-                           FontSize="20"
-                           FontWeight="Bold"
-                           Foreground="White"
-                           HorizontalAlignment="Left"/>
-                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                    <TextBlock Text="Profile:" Foreground="White" VerticalAlignment="Center" Margin="0,0,8,0"/>
-                    <TextBox Text="{Binding CurrentProfileName, UpdateSourceTrigger=PropertyChanged}"
-                             Width="120" Padding="5,3" VerticalAlignment="Center"/>
-                    <Button Content="Save" Style="{StaticResource ActionButtonStyle}"
-                            Command="{Binding SaveProfileCommand}" Margin="8,0,0,0"/>
-                </StackPanel>
-            </Grid>
+            <TextBlock Text="AutoClickKey"
+                       FontSize="20"
+                       FontWeight="Bold"
+                       Foreground="White"/>
         </Border>
 
         <!-- Main Content -->
@@ -122,6 +112,7 @@
                                         <ColumnDefinition Width="Auto"/>
                                         <ColumnDefinition Width="*"/>
                                         <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="Auto"/>
                                     </Grid.ColumnDefinitions>
                                     <CheckBox Grid.Column="0" IsChecked="{Binding IsEnabled}"
                                               VerticalAlignment="Center" Margin="0,0,8,0"/>
@@ -132,7 +123,11 @@
                                             <Run Text=" | Repeat: "/><Run Text="{Binding RepeatCount}"/><Run Text="x"/>
                                         </TextBlock>
                                     </StackPanel>
-                                    <Border Grid.Column="2" Background="#E0E0E0" CornerRadius="3"
+                                    <TextBlock Grid.Column="2" Text="{Binding Remark}" FontSize="11" Foreground="#666"
+                                               FontStyle="Italic" TextTrimming="CharacterEllipsis" MaxWidth="100"
+                                               VerticalAlignment="Center" Margin="8,0"
+                                               Visibility="{Binding Remark, Converter={StaticResource StringToVisibilityConverter}}"/>
+                                    <Border Grid.Column="3" Background="#E0E0E0" CornerRadius="3"
                                             Padding="6,2" VerticalAlignment="Center">
                                         <TextBlock Text="{Binding Type}" FontSize="11"/>
                                     </Border>
@@ -316,22 +311,36 @@
                                                  Text="{Binding SelectedAction.RepeatCount, UpdateSourceTrigger=PropertyChanged}"/>
                                     </Grid>
                                 </GroupBox>
+                                <GroupBox Header="Remark" Style="{StaticResource GroupBoxStyle}">
+                                    <TextBox Style="{StaticResource InputStyle}"
+                                             Text="{Binding SelectedAction.Remark, UpdateSourceTrigger=PropertyChanged}"
+                                             AcceptsReturn="False"/>
+                                </GroupBox>
                             </StackPanel>
                         </StackPanel>
                     </ScrollViewer>
                 </GroupBox>
 
                 <!-- Profiles Panel -->
-                <GroupBox Grid.Row="1" Header="Saved Profiles" Margin="5,5,0,0">
-                    <Grid>
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="Auto"/>
-                        </Grid.RowDefinitions>
-                        <ComboBox Grid.Row="0" Style="{StaticResource ComboStyle}"
+                <GroupBox Grid.Row="1" Header="Profile" Margin="5,5,0,0">
+                    <StackPanel>
+                        <Grid Margin="0,0,0,8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Text="Name:" Style="{StaticResource LabelStyle}"/>
+                            <TextBox Grid.Column="1" Style="{StaticResource InputStyle}"
+                                     Text="{Binding CurrentProfileName, UpdateSourceTrigger=PropertyChanged}"/>
+                        </Grid>
+                        <Button Content="Save Profile" Style="{StaticResource ActionButtonStyle}"
+                                Command="{Binding SaveProfileCommand}" HorizontalAlignment="Stretch" Margin="0,0,0,8"/>
+                        <Separator Margin="0,4"/>
+                        <TextBlock Text="Load existing:" FontSize="11" Foreground="Gray" Margin="0,8,0,4"/>
+                        <ComboBox Style="{StaticResource ComboStyle}"
                                   ItemsSource="{Binding ProfileNames}"
                                   SelectedItem="{Binding SelectedProfileName}"/>
-                        <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,5,0,0">
+                        <StackPanel Orientation="Horizontal" Margin="0,5,0,0">
                             <Button Content="Load" Style="{StaticResource ActionButtonStyle}"
                                     Command="{Binding LoadProfileCommand}"/>
                             <Button Content="Delete" Style="{StaticResource ActionButtonStyle}"
@@ -339,7 +348,7 @@
                             <Button Content="New" Style="{StaticResource ActionButtonStyle}"
                                     Command="{Binding NewProfileCommand}"/>
                         </StackPanel>
-                    </Grid>
+                    </StackPanel>
                 </GroupBox>
             </Grid>
         </Grid>
