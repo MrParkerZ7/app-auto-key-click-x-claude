@@ -117,4 +117,35 @@ public class RelayCommandTests
         // Assert
         executedValue.Should().Be(42);
     }
+
+    [Fact]
+    public void RaiseCanExecuteChanged_DoesNotThrow()
+    {
+        // Arrange
+        var command = new RelayCommand(() => { });
+
+        // Act
+        Action act = () => command.RaiseCanExecuteChanged();
+
+        // Assert
+        act.Should().NotThrow();
+    }
+
+    [Fact]
+    public void CanExecuteChanged_CanSubscribeAndUnsubscribe()
+    {
+        // Arrange
+        var command = new RelayCommand(() => { });
+        var eventRaised = false;
+        EventHandler handler = (_, _) => eventRaised = true;
+
+        // Act - Subscribe
+        command.CanExecuteChanged += handler;
+
+        // Act - Unsubscribe
+        command.CanExecuteChanged -= handler;
+
+        // Assert - Just verify no exceptions were thrown
+        eventRaised.Should().BeFalse();
+    }
 }

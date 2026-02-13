@@ -125,4 +125,20 @@ public class SettingsServiceTests
         // Assert
         act.Should().NotThrow();
     }
+
+    [Fact]
+    public void Constructor_WithFileSystem_CreatesDefaultDirectory()
+    {
+        // Arrange
+        var fileSystemMock = new Mock<IFileSystem>();
+        var expectedPath = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+            "AutoClickKey");
+
+        // Act
+        var service = new SettingsService(fileSystemMock.Object);
+
+        // Assert
+        fileSystemMock.Verify(fs => fs.CreateDirectory(expectedPath), Times.Once);
+    }
 }

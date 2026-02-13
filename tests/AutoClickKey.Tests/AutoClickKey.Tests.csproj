@@ -15,13 +15,15 @@
     <CoverletOutputFormat>cobertura</CoverletOutputFormat>
     <CoverletOutput>./coverage/</CoverletOutput>
     <!-- Minimum coverage threshold (fails build if not met) -->
-    <Threshold>60</Threshold>
+    <Threshold>100</Threshold>
     <ThresholdType>line</ThresholdType>
     <ThresholdStat>total</ThresholdStat>
     <!-- Exclude generated/untestable code -->
-    <ExcludeByFile>**/AssemblyInfo.cs,**/App.xaml.cs</ExcludeByFile>
-    <!-- Exclude Views, Win32 interop, and services requiring WPF dispatcher -->
-    <Exclude>[AutoClickKey]*Views*,[AutoClickKey]*Helpers.Win32Api*,[AutoClickKey]*ViewModels*,[AutoClickKey]*Services.HotkeyService*,[AutoClickKey]*Services.PositionPickerService*,[AutoClickKey]*Services.RecorderService*,[AutoClickKey]*Services.ClickerService*,[AutoClickKey]*Services.KeyboardService*,[AutoClickKey]*Services.ActionRunnerService*</Exclude>
+    <ExcludeByFile>**/AssemblyInfo.cs,**/App.xaml.cs,**/*.g.cs,**/*.g.i.cs,**/MainWindow.xaml.cs</ExcludeByFile>
+    <!-- Exclude generated code by attribute -->
+    <ExcludeByAttribute>GeneratedCodeAttribute,CompilerGeneratedAttribute</ExcludeByAttribute>
+    <!-- Exclude Views, Win32 interop, services requiring WPF dispatcher, FileSystem wrapper, and WPF entry point -->
+    <Exclude>[AutoClickKey]*Views*,[AutoClickKey]*Helpers.Win32Api*,[AutoClickKey]*ViewModels*,[AutoClickKey]*Services.HotkeyService*,[AutoClickKey]*Services.PositionPickerService*,[AutoClickKey]*Services.RecorderService*,[AutoClickKey]*Services.ClickerService*,[AutoClickKey]*Services.KeyboardService*,[AutoClickKey]*Services.ActionRunnerService*,[AutoClickKey]*Services.FileSystem,[AutoClickKey]XamlGeneratedNamespace*,[AutoClickKey]AutoClickKey.MainWindow*,[AutoClickKey]AutoClickKey.App</Exclude>
   </PropertyGroup>
 
   <ItemGroup>

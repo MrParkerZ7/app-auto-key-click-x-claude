@@ -1,3 +1,4 @@
+using System.IO;
 using System.Text.Json;
 using AutoClickKey.Models;
 using AutoClickKey.Services;
@@ -218,5 +219,22 @@ public class ProfileServiceTests
 
         // Assert
         result.Should().BeNull();
+    }
+
+    [Fact]
+    public void Constructor_WithFileSystem_CreatesDefaultDirectory()
+    {
+        // Arrange
+        var fileSystemMock = new Mock<IFileSystem>();
+        var expectedPath = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+            "AutoClickKey",
+            "Profiles");
+
+        // Act
+        var service = new ProfileService(fileSystemMock.Object);
+
+        // Assert
+        fileSystemMock.Verify(fs => fs.CreateDirectory(expectedPath), Times.Once);
     }
 }

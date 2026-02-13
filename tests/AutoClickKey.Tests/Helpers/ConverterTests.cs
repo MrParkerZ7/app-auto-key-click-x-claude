@@ -67,6 +67,13 @@ public class StartStopTextConverterTests
         var result = _converter.Convert("not a bool", typeof(string), null!, CultureInfo.InvariantCulture);
         result.Should().Be("Start (F4)");
     }
+
+    [Fact]
+    public void ConvertBack_ThrowsNotImplementedException()
+    {
+        Action act = () => _converter.ConvertBack("Start (F4)", typeof(bool), null!, CultureInfo.InvariantCulture);
+        act.Should().Throw<NotImplementedException>();
+    }
 }
 
 public class InverseBoolToVisibilityConverterTests
@@ -93,6 +100,13 @@ public class InverseBoolToVisibilityConverterTests
         var result = _converter.Convert("string", typeof(Visibility), null!, CultureInfo.InvariantCulture);
         result.Should().Be(Visibility.Visible);
     }
+
+    [Fact]
+    public void ConvertBack_ThrowsNotImplementedException()
+    {
+        Action act = () => _converter.ConvertBack(Visibility.Visible, typeof(bool), null!, CultureInfo.InvariantCulture);
+        act.Should().Throw<NotImplementedException>();
+    }
 }
 
 public class RecordButtonTextConverterTests
@@ -118,6 +132,13 @@ public class RecordButtonTextConverterTests
     {
         var result = _converter.Convert(null!, typeof(string), null!, CultureInfo.InvariantCulture);
         result.Should().Be("Record");
+    }
+
+    [Fact]
+    public void ConvertBack_ThrowsNotImplementedException()
+    {
+        Action act = () => _converter.ConvertBack("Record", typeof(bool), null!, CultureInfo.InvariantCulture);
+        act.Should().Throw<NotImplementedException>();
     }
 }
 
@@ -147,6 +168,13 @@ public class StringToVisibilityConverterTests
     {
         var result = _converter.Convert(123, typeof(Visibility), null!, CultureInfo.InvariantCulture);
         result.Should().Be(Visibility.Collapsed);
+    }
+
+    [Fact]
+    public void ConvertBack_ThrowsNotImplementedException()
+    {
+        Action act = () => _converter.ConvertBack(Visibility.Visible, typeof(string), null!, CultureInfo.InvariantCulture);
+        act.Should().Throw<NotImplementedException>();
     }
 }
 
@@ -180,5 +208,12 @@ public class IndexToVisibilityConverterTests
     {
         var result = _converter.Convert("string", typeof(Visibility), "2", CultureInfo.InvariantCulture);
         result.Should().Be(Visibility.Visible);
+    }
+
+    [Fact]
+    public void ConvertBack_ThrowsNotImplementedException()
+    {
+        Action act = () => _converter.ConvertBack(Visibility.Visible, typeof(int), "2", CultureInfo.InvariantCulture);
+        act.Should().Throw<NotImplementedException>();
     }
 }

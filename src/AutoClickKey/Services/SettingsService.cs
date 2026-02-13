@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Text.Json;
 
@@ -17,6 +18,7 @@ public class SettingsService
     private readonly JsonSerializerOptions _jsonOptions;
     private readonly IFileSystem _fileSystem;
 
+    [ExcludeFromCodeCoverage]
     public SettingsService() : this(new FileSystem())
     {
     }

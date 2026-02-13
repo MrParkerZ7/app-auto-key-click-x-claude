@@ -166,6 +166,40 @@ public class ActionItemTests
     }
 
     [Fact]
+    public void DisplayName_KeyPress_ShowsKeyWithShiftModifier()
+    {
+        // Arrange
+        var item = new ActionItem
+        {
+            Type = ActionItemType.KeyPress,
+            Key = "A",
+            UseCtrl = false,
+            UseAlt = false,
+            UseShift = true
+        };
+
+        // Assert
+        item.DisplayName.Should().Be("Press Shift+A");
+    }
+
+    [Fact]
+    public void DisplayName_KeyPress_ShowsKeyWithAllModifiers()
+    {
+        // Arrange
+        var item = new ActionItem
+        {
+            Type = ActionItemType.KeyPress,
+            Key = "S",
+            UseCtrl = true,
+            UseAlt = true,
+            UseShift = true
+        };
+
+        // Assert
+        item.DisplayName.Should().Be("Press Ctrl+Alt+Shift+S");
+    }
+
+    [Fact]
     public void DisplayName_Delay_ShowsDelayInMilliseconds()
     {
         // Arrange
@@ -236,5 +270,18 @@ public class ActionItemTests
         item.RepeatCount.Should().Be(1);
         item.Remark.Should().BeEmpty();
         item.Id.Should().NotBeEmpty();
+    }
+
+    [Fact]
+    public void DisplayName_ReturnsUnknown_WhenTypeIsInvalid()
+    {
+        // Arrange - Use an invalid enum value to cover the default switch case
+        var item = new ActionItem
+        {
+            Type = (ActionItemType)999
+        };
+
+        // Assert
+        item.DisplayName.Should().Be("Unknown");
     }
 }

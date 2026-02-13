@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Text.Json;
 using AutoClickKey.Models;
@@ -12,6 +13,7 @@ public class ProfileService
     private readonly JsonSerializerOptions _jsonOptions;
     private readonly IFileSystem _fileSystem;
 
+    [ExcludeFromCodeCoverage]
     public ProfileService() : this(new FileSystem())
     {
     }
