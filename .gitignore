@@ -98,6 +98,13 @@ secrets.json
 *.trx
 *.coverage
 *.coveragexml
+**/coverage/
 
 # JetBrains Rider
 *.sln.iml
+
+# Claude Code
+.claude/
+
+# Windows artifacts
+nul
