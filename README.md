@@ -115,6 +115,12 @@ AutoClickKey/
 │   │   └── Converters.cs          # XAML converters
 │   ├── MainWindow.xaml            # Main UI
 │   └── App.xaml
+├── tests/AutoClickKey.Tests/      # Unit Tests (92 tests, 100% coverage)
+│   ├── Models/                    # Model tests
+│   ├── Services/                  # Service tests
+│   └── Helpers/                   # Helper tests
+├── .github/workflows/             # CI/CD
+│   └── ci.yml                     # GitHub Actions workflow
 ├── README.md
 ├── CLAUDE.md                      # Development guide
 └── AutoClickKey.sln
@@ -126,6 +132,39 @@ AutoClickKey/
 - **UI**: WPF (Windows Presentation Foundation)
 - **Pattern**: MVVM (Model-View-ViewModel)
 - **Windows API**: user32.dll (SendInput, SetWindowsHookEx)
+- **Testing**: xUnit, FluentAssertions, Moq
+- **Code Quality**: StyleCop.Analyzers, EditorConfig
+
+## Development
+
+### Running Tests
+
+```bash
+# Run all tests with coverage
+dotnet test
+
+# Run tests without coverage threshold
+dotnet test -p:CollectCoverage=false
+```
+
+### Code Quality
+
+```bash
+# Check code formatting
+dotnet format --verify-no-changes
+
+# Fix formatting issues
+dotnet format
+```
+
+### CI/CD
+
+GitHub Actions workflow runs on every push/PR:
+- Build in Release mode
+- Run 92 unit tests with 100% coverage enforcement
+- Verify code formatting
+
+[![CI](https://github.com/MrParkerZ7/app-auto-key-click-x-claude/actions/workflows/ci.yml/badge.svg)](https://github.com/MrParkerZ7/app-auto-key-click-x-claude/actions/workflows/ci.yml)
 
 ## Roadmap
 
@@ -135,9 +174,11 @@ AutoClickKey/
 - [x] Global Hotkey system
 - [x] Record & Playback
 - [x] Profile management
+- [x] Settings persistence
+- [x] Unit tests with 100% coverage
+- [x] CI/CD pipeline
 - [ ] Dark/Light theme
 - [ ] System tray integration
-- [ ] Settings persistence
 - [ ] Installer/Release build
 
 ## Contributing
