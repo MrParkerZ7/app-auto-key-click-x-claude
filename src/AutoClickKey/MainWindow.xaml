@@ -111,8 +111,8 @@
                                 <Grid Margin="2">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="Auto" MinWidth="120"/>
                                         <ColumnDefinition Width="*"/>
-                                        <ColumnDefinition Width="Auto"/>
                                         <ColumnDefinition Width="Auto"/>
                                     </Grid.ColumnDefinitions>
                                     <CheckBox Grid.Column="0" IsChecked="{Binding IsEnabled}"
@@ -125,8 +125,8 @@
                                         </TextBlock>
                                     </StackPanel>
                                     <TextBlock Grid.Column="2" Text="{Binding Remark}" FontSize="11" Foreground="#666"
-                                               FontStyle="Italic" TextTrimming="CharacterEllipsis" MaxWidth="100"
-                                               VerticalAlignment="Center" Margin="8,0"
+                                               FontStyle="Italic" TextTrimming="CharacterEllipsis"
+                                               VerticalAlignment="Top" Margin="8,2,8,0"
                                                Visibility="{Binding Remark, Converter={StaticResource StringToVisibilityConverter}}"/>
                                     <Border Grid.Column="3" Background="#E0E0E0" CornerRadius="3"
                                             Padding="6,2" VerticalAlignment="Center">
