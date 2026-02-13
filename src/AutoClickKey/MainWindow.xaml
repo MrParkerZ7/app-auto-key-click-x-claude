@@ -6,6 +6,7 @@
         xmlns:vm="clr-namespace:AutoClickKey.ViewModels"
         mc:Ignorable="d"
         Title="AutoClickKey"
+        Icon="Assets/app-icon-v1.png"
         Height="600"
         Width="900"
         MinHeight="500"
@@ -333,20 +334,15 @@
                             <TextBox Grid.Column="1" Style="{StaticResource InputStyle}"
                                      Text="{Binding CurrentProfileName, UpdateSourceTrigger=PropertyChanged}"/>
                         </Grid>
-                        <Button Content="Save Profile" Style="{StaticResource ActionButtonStyle}"
-                                Command="{Binding SaveProfileCommand}" HorizontalAlignment="Stretch" Margin="0,0,0,8"/>
-                        <Separator Margin="0,4"/>
-                        <TextBlock Text="Load existing:" FontSize="11" Foreground="Gray" Margin="0,8,0,4"/>
+                        <TextBlock Text="Auto-saves when name is set" FontSize="10" Foreground="Gray" Margin="0,0,0,8"/>
                         <ComboBox Style="{StaticResource ComboStyle}"
                                   ItemsSource="{Binding ProfileNames}"
                                   SelectedItem="{Binding SelectedProfileName}"/>
-                        <StackPanel Orientation="Horizontal" Margin="0,5,0,0">
-                            <Button Content="Load" Style="{StaticResource ActionButtonStyle}"
-                                    Command="{Binding LoadProfileCommand}"/>
-                            <Button Content="Delete" Style="{StaticResource ActionButtonStyle}"
-                                    Command="{Binding DeleteProfileCommand}"/>
+                        <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
                             <Button Content="New" Style="{StaticResource ActionButtonStyle}"
                                     Command="{Binding NewProfileCommand}"/>
+                            <Button Content="Delete" Style="{StaticResource ActionButtonStyle}"
+                                    Command="{Binding DeleteProfileCommand}"/>
                         </StackPanel>
                     </StackPanel>
                 </GroupBox>

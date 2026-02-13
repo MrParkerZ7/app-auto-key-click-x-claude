@@ -16,6 +16,7 @@ public class MainViewModel : ViewModelBase, IDisposable
     private readonly HotkeyService _hotkeyService;
     private readonly PositionPickerService _positionPicker;
     private Window? _mainWindow;
+    private bool _isLoading; // Prevent auto-save during load
 
     public MainViewModel()
     {
@@ -31,6 +32,7 @@ public class MainViewModel : ViewModelBase, IDisposable
             Application.Current.Dispatcher.Invoke(() => OnPickingCancelled());
 
         Actions = new ObservableCollection<ActionItem>();
+        Actions.CollectionChanged += (_, _) => AutoSave();
         ProfileNames = new ObservableCollection<string>();
 
         // Setup event handlers
@@ -54,8 +56,6 @@ public class MainViewModel : ViewModelBase, IDisposable
         MoveDownCommand = new RelayCommand(MoveActionDown, () => SelectedAction != null && Actions.IndexOf(SelectedAction) < Actions.Count - 1);
         DuplicateCommand = new RelayCommand(DuplicateAction, () => SelectedAction != null);
         ClearAllCommand = new RelayCommand(ClearAllActions, () => Actions.Count > 0);
-        SaveProfileCommand = new RelayCommand(SaveProfile);
-        LoadProfileCommand = new RelayCommand(LoadSelectedProfile, () => !string.IsNullOrEmpty(SelectedProfileName));
         DeleteProfileCommand = new RelayCommand(DeleteSelectedProfile, () => !string.IsNullOrEmpty(SelectedProfileName));
         NewProfileCommand = new RelayCommand(NewProfile);
         PickPositionCommand = new RelayCommand(PickPosition);
@@ -115,8 +115,11 @@ public class MainViewModel : ViewModelBase, IDisposable
         {
             if (SetProperty(ref _selectedProfileName, value))
             {
-                (LoadProfileCommand as RelayCommand)?.RaiseCanExecuteChanged();
                 (DeleteProfileCommand as RelayCommand)?.RaiseCanExecuteChanged();
+                if (!string.IsNullOrEmpty(value))
+                {
+                    LoadProfile(value);
+                }
             }
         }
     }
@@ -125,21 +128,21 @@ public class MainViewModel : ViewModelBase, IDisposable
     public bool LoopActions
     {
         get => _loopActions;
-        set => SetProperty(ref _loopActions, value);
+        set { if (SetProperty(ref _loopActions, value)) AutoSave(); }
     }
 
     private int _loopCount = 10;
     public int LoopCount
     {
         get => _loopCount;
-        set => SetProperty(ref _loopCount, Math.Max(0, value));
+        set { if (SetProperty(ref _loopCount, Math.Max(0, value))) AutoSave(); }
     }
 
     private int _delayBetweenLoops;
     public int DelayBetweenLoops
     {
         get => _delayBetweenLoops;
-        set => SetProperty(ref _delayBetweenLoops, Math.Max(0, value));
+        set { if (SetProperty(ref _delayBetweenLoops, Math.Max(0, value))) AutoSave(); }
     }
 
     private bool _isRunning;
@@ -203,8 +206,6 @@ public class MainViewModel : ViewModelBase, IDisposable
     public ICommand MoveDownCommand { get; }
     public ICommand DuplicateCommand { get; }
     public ICommand ClearAllCommand { get; }
-    public ICommand SaveProfileCommand { get; }
-    public ICommand LoadProfileCommand { get; }
     public ICommand DeleteProfileCommand { get; }
     public ICommand NewProfileCommand { get; }
     public ICommand PickPositionCommand { get; }
@@ -444,15 +445,22 @@ public class MainViewModel : ViewModelBase, IDisposable
 
     private void RefreshProfileList()
     {
+        var currentSelection = _selectedProfileName;
         ProfileNames.Clear();
         foreach (var name in _profileService.GetAllProfileNames())
         {
             ProfileNames.Add(name);
         }
+        // Restore selection without triggering load
+        _selectedProfileName = currentSelection;
+        OnPropertyChanged(nameof(SelectedProfileName));
     }
 
-    private void SaveProfile()
+    private void AutoSave()
     {
+        if (_isLoading) return;
+        if (string.IsNullOrWhiteSpace(CurrentProfileName) || CurrentProfileName == "Untitled") return;
+
         var profile = new Profile
         {
             Name = CurrentProfileName,
@@ -465,30 +473,39 @@ public class MainViewModel : ViewModelBase, IDisposable
 
         _profileService.SaveProfile(profile);
         RefreshProfileList();
-        SelectedProfileName = CurrentProfileName;
     }
 
-    private void LoadSelectedProfile()
+    private void LoadProfile(string name)
     {
-        if (string.IsNullOrEmpty(SelectedProfileName)) return;
-
-        var profile = _profileService.LoadProfile(SelectedProfileName);
+        var profile = _profileService.LoadProfile(name);
         if (profile == null) return;
 
-        Actions.Clear();
-        foreach (var action in profile.Actions)
+        _isLoading = true;
+        try
         {
-            Actions.Add(action);
+            Actions.Clear();
+            foreach (var action in profile.Actions)
+            {
+                Actions.Add(action);
+            }
+
+            _currentProfileName = profile.Name;
+            OnPropertyChanged(nameof(CurrentProfileName));
+            _loopActions = profile.LoopActions;
+            OnPropertyChanged(nameof(LoopActions));
+            _loopCount = profile.LoopCount;
+            OnPropertyChanged(nameof(LoopCount));
+            _delayBetweenLoops = profile.DelayBetweenLoops;
+            OnPropertyChanged(nameof(DelayBetweenLoops));
+
+            if (Actions.Count > 0)
+            {
+                SelectedAction = Actions[0];
+            }
         }
-
-        CurrentProfileName = profile.Name;
-        LoopActions = profile.LoopActions;
-        LoopCount = profile.LoopCount;
-        DelayBetweenLoops = profile.DelayBetweenLoops;
-
-        if (Actions.Count > 0)
+        finally
         {
-            SelectedAction = Actions[0];
+            _isLoading = false;
         }
     }
 
@@ -498,18 +515,29 @@ public class MainViewModel : ViewModelBase, IDisposable
 
         _profileService.DeleteProfile(SelectedProfileName);
         RefreshProfileList();
-        SelectedProfileName = null;
+        _selectedProfileName = null;
+        OnPropertyChanged(nameof(SelectedProfileName));
     }
 
     private void NewProfile()
     {
-        Actions.Clear();
-        CurrentProfileName = "Untitled";
-        LoopActions = true;
-        LoopCount = 0;
-        DelayBetweenLoops = 0;
-        SelectedAction = null;
-        AddClickAction();
+        _isLoading = true;
+        try
+        {
+            Actions.Clear();
+            CurrentProfileName = "Untitled";
+            LoopActions = true;
+            LoopCount = 10;
+            DelayBetweenLoops = 0;
+            SelectedAction = null;
+            _selectedProfileName = null;
+            OnPropertyChanged(nameof(SelectedProfileName));
+            AddClickAction();
+        }
+        finally
+        {
+            _isLoading = false;
+        }
     }
 
     #endregion
