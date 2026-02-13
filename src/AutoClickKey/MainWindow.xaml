@@ -6,9 +6,10 @@
         xmlns:vm="clr-namespace:AutoClickKey.ViewModels"
         mc:Ignorable="d"
         Title="AutoClickKey"
-        Height="500"
-        Width="450"
-        ResizeMode="CanMinimize"
+        Height="600"
+        Width="900"
+        MinHeight="500"
+        MinWidth="750"
         WindowStartupLocation="CenterScreen"
         Loaded="Window_Loaded"
         Closing="Window_Closing">
@@ -39,6 +40,19 @@
             <Setter Property="Padding" Value="5,3"/>
             <Setter Property="Margin" Value="0,2"/>
         </Style>
+
+        <Style x:Key="ActionButtonStyle" TargetType="Button">
+            <Setter Property="Padding" Value="8,4"/>
+            <Setter Property="Margin" Value="2"/>
+            <Setter Property="MinWidth" Value="60"/>
+        </Style>
+
+        <Style x:Key="SmallButtonStyle" TargetType="Button">
+            <Setter Property="Padding" Value="5,3"/>
+            <Setter Property="Margin" Value="2"/>
+            <Setter Property="Width" Value="28"/>
+            <Setter Property="Height" Value="28"/>
+        </Style>
     </Window.Resources>
 
     <Grid>
@@ -51,242 +65,321 @@
 
         <!-- Header -->
         <Border Grid.Row="0" Background="#2D2D30" Padding="10">
-            <TextBlock Text="AutoClickKey"
-                       FontSize="20"
-                       FontWeight="Bold"
-                       Foreground="White"/>
-        </Border>
-
-        <!-- Tab Control -->
-        <TabControl Grid.Row="1"
-                    Margin="10"
-                    SelectedIndex="{Binding SelectedTab}">
-
-            <!-- Auto Clicker Tab -->
-            <TabItem Header="Auto Clicker">
-                <ScrollViewer VerticalScrollBarVisibility="Auto">
-                    <StackPanel Margin="10">
-
-                        <!-- Click Options -->
-                        <GroupBox Header="Click Options" Style="{StaticResource GroupBoxStyle}">
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto"/>
-                                    <ColumnDefinition Width="*"/>
-                                </Grid.ColumnDefinitions>
-                                <Grid.RowDefinitions>
-                                    <RowDefinition Height="Auto"/>
-                                    <RowDefinition Height="Auto"/>
-                                    <RowDefinition Height="Auto"/>
-                                </Grid.RowDefinitions>
-
-                                <TextBlock Grid.Row="0" Grid.Column="0"
-                                           Text="Mouse Button:"
-                                           Style="{StaticResource LabelStyle}"/>
-                                <ComboBox Grid.Row="0" Grid.Column="1"
-                                          Style="{StaticResource ComboStyle}"
-                                          SelectedIndex="{Binding SelectedMouseButton}">
-                                    <ComboBoxItem Content="Left"/>
-                                    <ComboBoxItem Content="Right"/>
-                                    <ComboBoxItem Content="Middle"/>
-                                </ComboBox>
-
-                                <TextBlock Grid.Row="1" Grid.Column="0"
-                                           Text="Click Type:"
-                                           Style="{StaticResource LabelStyle}"/>
-                                <ComboBox Grid.Row="1" Grid.Column="1"
-                                          Style="{StaticResource ComboStyle}"
-                                          SelectedIndex="{Binding SelectedClickType}">
-                                    <ComboBoxItem Content="Single Click"/>
-                                    <ComboBoxItem Content="Double Click"/>
-                                </ComboBox>
-
-                                <TextBlock Grid.Row="2" Grid.Column="0"
-                                           Text="Interval (ms):"
-                                           Style="{StaticResource LabelStyle}"/>
-                                <TextBox Grid.Row="2" Grid.Column="1"
-                                         Style="{StaticResource InputStyle}"
-                                         Text="{Binding ClickInterval, UpdateSourceTrigger=PropertyChanged}"/>
-                            </Grid>
-                        </GroupBox>
-
-                        <!-- Position Options -->
-                        <GroupBox Header="Click Position" Style="{StaticResource GroupBoxStyle}">
-                            <StackPanel>
-                                <RadioButton Content="Current Cursor Position"
-                                             IsChecked="{Binding UseCurrentPosition}"
-                                             Margin="0,5"/>
-                                <RadioButton Content="Fixed Position"
-                                             IsChecked="{Binding UseCurrentPosition, Converter={StaticResource InverseBoolConverter}}"
-                                             Margin="0,5"/>
-                                <Grid Margin="20,5,0,0" IsEnabled="{Binding UseCurrentPosition, Converter={StaticResource InverseBoolConverter}}">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="Auto"/>
-                                        <ColumnDefinition Width="80"/>
-                                        <ColumnDefinition Width="Auto"/>
-                                        <ColumnDefinition Width="80"/>
-                                        <ColumnDefinition Width="*"/>
-                                    </Grid.ColumnDefinitions>
-                                    <TextBlock Grid.Column="0" Text="X:" VerticalAlignment="Center" Margin="0,0,5,0"/>
-                                    <TextBox Grid.Column="1" Style="{StaticResource InputStyle}"
-                                             Text="{Binding FixedX, UpdateSourceTrigger=PropertyChanged}"/>
-                                    <TextBlock Grid.Column="2" Text="Y:" VerticalAlignment="Center" Margin="10,0,5,0"/>
-                                    <TextBox Grid.Column="3" Style="{StaticResource InputStyle}"
-                                             Text="{Binding FixedY, UpdateSourceTrigger=PropertyChanged}"/>
-                                    <Button Grid.Column="4" Content="Pick" Margin="10,0,0,0"
-                                            Padding="10,3" Command="{Binding PickPositionCommand}"/>
-                                </Grid>
-                            </StackPanel>
-                        </GroupBox>
-
-                        <!-- Repeat Options -->
-                        <GroupBox Header="Repeat" Style="{StaticResource GroupBoxStyle}">
-                            <StackPanel>
-                                <RadioButton Content="Infinite (until stopped)"
-                                             IsChecked="{Binding ClickInfinite}"
-                                             Margin="0,5"/>
-                                <StackPanel Orientation="Horizontal" Margin="0,5">
-                                    <RadioButton Content="Repeat" VerticalAlignment="Center"/>
-                                    <TextBox Width="80" Margin="10,0"
-                                             Style="{StaticResource InputStyle}"
-                                             Text="{Binding ClickRepeatCount, UpdateSourceTrigger=PropertyChanged}"
-                                             IsEnabled="{Binding ClickInfinite, Converter={StaticResource InverseBoolConverter}}"/>
-                                    <TextBlock Text="times" VerticalAlignment="Center"/>
-                                </StackPanel>
-                            </StackPanel>
-                        </GroupBox>
-                    </StackPanel>
-                </ScrollViewer>
-            </TabItem>
-
-            <!-- Auto Keyboard Tab -->
-            <TabItem Header="Auto Keyboard">
-                <ScrollViewer VerticalScrollBarVisibility="Auto">
-                    <StackPanel Margin="10">
-
-                        <!-- Keyboard Mode -->
-                        <GroupBox Header="Mode" Style="{StaticResource GroupBoxStyle}">
-                            <ComboBox Style="{StaticResource ComboStyle}"
-                                      SelectedIndex="{Binding SelectedKeyboardMode}">
-                                <ComboBoxItem Content="Type Text"/>
-                                <ComboBoxItem Content="Press Key"/>
-                            </ComboBox>
-                        </GroupBox>
-
-                        <!-- Text Input -->
-                        <GroupBox Header="Text to Type" Style="{StaticResource GroupBoxStyle}"
-                                  Visibility="{Binding SelectedKeyboardMode, Converter={StaticResource IndexToVisibilityConverter}, ConverterParameter=0}">
-                            <TextBox Style="{StaticResource InputStyle}"
-                                     Height="60"
-                                     TextWrapping="Wrap"
-                                     AcceptsReturn="True"
-                                     Text="{Binding TextToType, UpdateSourceTrigger=PropertyChanged}"/>
-                        </GroupBox>
-
-                        <!-- Key Input -->
-                        <GroupBox Header="Key to Press" Style="{StaticResource GroupBoxStyle}"
-                                  Visibility="{Binding SelectedKeyboardMode, Converter={StaticResource IndexToVisibilityConverter}, ConverterParameter=1}">
-                            <StackPanel>
-                                <TextBox Style="{StaticResource InputStyle}"
-                                         Text="{Binding SelectedKey, UpdateSourceTrigger=PropertyChanged}"
-                                         MaxLength="10"/>
-                                <TextBlock Text="Enter key name (e.g., A, Enter, F1, Space)"
-                                           FontSize="11" Foreground="Gray" Margin="0,5"/>
-                                <StackPanel Orientation="Horizontal" Margin="0,5">
-                                    <CheckBox Content="Ctrl" IsChecked="{Binding UseCtrl}" Margin="0,0,15,0"/>
-                                    <CheckBox Content="Alt" IsChecked="{Binding UseAlt}" Margin="0,0,15,0"/>
-                                    <CheckBox Content="Shift" IsChecked="{Binding UseShift}"/>
-                                </StackPanel>
-                            </StackPanel>
-                        </GroupBox>
-
-                        <!-- Interval -->
-                        <GroupBox Header="Interval" Style="{StaticResource GroupBoxStyle}">
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto"/>
-                                    <ColumnDefinition Width="*"/>
-                                </Grid.ColumnDefinitions>
-                                <TextBlock Text="Delay (ms):" Style="{StaticResource LabelStyle}"/>
-                                <TextBox Grid.Column="1" Style="{StaticResource InputStyle}"
-                                         Text="{Binding KeyInterval, UpdateSourceTrigger=PropertyChanged}"/>
-                            </Grid>
-                        </GroupBox>
-
-                        <!-- Repeat Options -->
-                        <GroupBox Header="Repeat" Style="{StaticResource GroupBoxStyle}">
-                            <StackPanel>
-                                <RadioButton Content="Infinite (until stopped)"
-                                             IsChecked="{Binding KeyInfinite}"
-                                             Margin="0,5"/>
-                                <StackPanel Orientation="Horizontal" Margin="0,5">
-                                    <RadioButton Content="Repeat" VerticalAlignment="Center"/>
-                                    <TextBox Width="80" Margin="10,0"
-                                             Style="{StaticResource InputStyle}"
-                                             Text="{Binding KeyRepeatCount, UpdateSourceTrigger=PropertyChanged}"
-                                             IsEnabled="{Binding KeyInfinite, Converter={StaticResource InverseBoolConverter}}"/>
-                                    <TextBlock Text="times" VerticalAlignment="Center"/>
-                                </StackPanel>
-                            </StackPanel>
-                        </GroupBox>
-                    </StackPanel>
-                </ScrollViewer>
-            </TabItem>
-
-            <!-- Record Tab -->
-            <TabItem Header="Record">
-                <StackPanel Margin="10">
-                    <GroupBox Header="Recording" Style="{StaticResource GroupBoxStyle}">
-                        <StackPanel>
-                            <TextBlock TextWrapping="Wrap" Margin="0,0,0,10">
-                                Record mouse movements and clicks, then play them back.
-                            </TextBlock>
-                            <StackPanel Orientation="Horizontal">
-                                <Button Content="{Binding IsRecording, Converter={StaticResource RecordButtonTextConverter}}"
-                                        Width="100" Padding="10,5" Margin="0,0,10,0"
-                                        Command="{Binding RecordCommand}"/>
-                                <Button Content="Play" Width="100" Padding="10,5"
-                                        Command="{Binding PlayCommand}"/>
-                            </StackPanel>
-                        </StackPanel>
-                    </GroupBox>
-                </StackPanel>
-            </TabItem>
-        </TabControl>
-
-        <!-- Status Bar -->
-        <Border Grid.Row="2" Background="#F0F0F0" Padding="10,5">
             <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="Auto"/>
-                </Grid.ColumnDefinitions>
-                <TextBlock Grid.Column="0" Text="{Binding StatusText}" VerticalAlignment="Center"/>
-                <TextBlock Grid.Column="1" VerticalAlignment="Center" Margin="10,0">
-                    <Run Text="Clicks: "/><Run Text="{Binding ClickCount}"/>
-                </TextBlock>
-                <TextBlock Grid.Column="2" VerticalAlignment="Center" Margin="10,0">
-                    <Run Text="Keys: "/><Run Text="{Binding KeyCount}"/>
-                </TextBlock>
+                <TextBlock Text="AutoClickKey"
+                           FontSize="20"
+                           FontWeight="Bold"
+                           Foreground="White"
+                           HorizontalAlignment="Left"/>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                    <TextBlock Text="Profile:" Foreground="White" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                    <TextBox Text="{Binding CurrentProfileName, UpdateSourceTrigger=PropertyChanged}"
+                             Width="120" Padding="5,3" VerticalAlignment="Center"/>
+                    <Button Content="Save" Style="{StaticResource ActionButtonStyle}"
+                            Command="{Binding SaveProfileCommand}" Margin="8,0,0,0"/>
+                </StackPanel>
             </Grid>
         </Border>
 
-        <!-- Control Buttons -->
-        <Border Grid.Row="3" Padding="10">
+        <!-- Main Content -->
+        <Grid Grid.Row="1" Margin="10">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" MinWidth="300"/>
+                <ColumnDefinition Width="320"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- Action List Panel -->
+            <GroupBox Grid.Column="0" Header="Action List" Margin="0,0,5,0">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <!-- Add Action Buttons -->
+                    <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,8">
+                        <Button Content="+ Click" Style="{StaticResource ActionButtonStyle}"
+                                Command="{Binding AddClickCommand}"/>
+                        <Button Content="+ Key" Style="{StaticResource ActionButtonStyle}"
+                                Command="{Binding AddKeyCommand}"/>
+                        <Button Content="+ Delay" Style="{StaticResource ActionButtonStyle}"
+                                Command="{Binding AddDelayCommand}"/>
+                        <Separator Margin="8,0"/>
+                        <Button Content="Clear All" Style="{StaticResource ActionButtonStyle}"
+                                Command="{Binding ClearAllCommand}"/>
+                    </StackPanel>
+
+                    <!-- Action List -->
+                    <ListBox Grid.Row="1"
+                             ItemsSource="{Binding Actions}"
+                             SelectedItem="{Binding SelectedAction}"
+                             HorizontalContentAlignment="Stretch">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <Grid Margin="2">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <CheckBox Grid.Column="0" IsChecked="{Binding IsEnabled}"
+                                              VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                        <TextBlock Text="{Binding DisplayName}" FontWeight="SemiBold"/>
+                                        <TextBlock FontSize="11" Foreground="Gray">
+                                            <Run Text="Delay: "/><Run Text="{Binding DelayMs}"/><Run Text="ms"/>
+                                            <Run Text=" | Repeat: "/><Run Text="{Binding RepeatCount}"/><Run Text="x"/>
+                                        </TextBlock>
+                                    </StackPanel>
+                                    <Border Grid.Column="2" Background="#E0E0E0" CornerRadius="3"
+                                            Padding="6,2" VerticalAlignment="Center">
+                                        <TextBlock Text="{Binding Type}" FontSize="11"/>
+                                    </Border>
+                                </Grid>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+
+                    <!-- Action List Controls -->
+                    <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,8,0,0">
+                        <Button Style="{StaticResource SmallButtonStyle}" Content="▲"
+                                Command="{Binding MoveUpCommand}" ToolTip="Move Up"/>
+                        <Button Style="{StaticResource SmallButtonStyle}" Content="▼"
+                                Command="{Binding MoveDownCommand}" ToolTip="Move Down"/>
+                        <Button Style="{StaticResource SmallButtonStyle}" Content="📋"
+                                Command="{Binding DuplicateCommand}" ToolTip="Duplicate"/>
+                        <Button Style="{StaticResource SmallButtonStyle}" Content="✕"
+                                Command="{Binding RemoveActionCommand}" ToolTip="Remove"/>
+                    </StackPanel>
+                </Grid>
+            </GroupBox>
+
+            <!-- Right Panel - Properties & Profiles -->
+            <Grid Grid.Column="1">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <!-- Action Properties Panel -->
+                <GroupBox Grid.Row="0" Header="Action Properties" Margin="5,0,0,5">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <StackPanel>
+                            <!-- No Selection -->
+                            <TextBlock Text="Select an action to edit its properties"
+                                       Foreground="Gray" Margin="5"
+                                       Visibility="{Binding HasSelectedAction, Converter={StaticResource InverseBoolToVisConverter}}"/>
+
+                            <!-- Click Properties -->
+                            <StackPanel Visibility="{Binding IsClickAction, Converter={StaticResource BoolToVis}}">
+                                <GroupBox Header="Click Settings" Style="{StaticResource GroupBoxStyle}">
+                                    <StackPanel>
+                                        <Grid Margin="0,0,0,8">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="*"/>
+                                            </Grid.ColumnDefinitions>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="Auto"/>
+                                                <RowDefinition Height="Auto"/>
+                                            </Grid.RowDefinitions>
+                                            <TextBlock Grid.Row="0" Grid.Column="0" Text="Button:" Style="{StaticResource LabelStyle}"/>
+                                            <ComboBox Grid.Row="0" Grid.Column="1" Style="{StaticResource ComboStyle}"
+                                                      SelectedIndex="{Binding SelectedAction.MouseButton}">
+                                                <ComboBoxItem Content="Left"/>
+                                                <ComboBoxItem Content="Right"/>
+                                                <ComboBoxItem Content="Middle"/>
+                                            </ComboBox>
+                                            <TextBlock Grid.Row="1" Grid.Column="0" Text="Type:" Style="{StaticResource LabelStyle}"/>
+                                            <ComboBox Grid.Row="1" Grid.Column="1" Style="{StaticResource ComboStyle}"
+                                                      SelectedIndex="{Binding SelectedAction.ClickType}">
+                                                <ComboBoxItem Content="Single"/>
+                                                <ComboBoxItem Content="Double"/>
+                                            </ComboBox>
+                                        </Grid>
+                                        <CheckBox Content="Use current cursor position"
+                                                  IsChecked="{Binding SelectedAction.UseCurrentPosition}"
+                                                  Margin="0,5"/>
+                                        <Grid Margin="0,5" IsEnabled="{Binding SelectedAction.UseCurrentPosition, Converter={StaticResource InverseBoolConverter}}">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="60"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="60"/>
+                                                <ColumnDefinition Width="*"/>
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Grid.Column="0" Text="X:" VerticalAlignment="Center"/>
+                                            <TextBox Grid.Column="1" Style="{StaticResource InputStyle}"
+                                                     Text="{Binding SelectedAction.FixedX, UpdateSourceTrigger=PropertyChanged}"/>
+                                            <TextBlock Grid.Column="2" Text="Y:" VerticalAlignment="Center" Margin="10,0,5,0"/>
+                                            <TextBox Grid.Column="3" Style="{StaticResource InputStyle}"
+                                                     Text="{Binding SelectedAction.FixedY, UpdateSourceTrigger=PropertyChanged}"/>
+                                            <Button Grid.Column="4" Content="Pick" Padding="8,3" Margin="8,0,0,0"
+                                                    Command="{Binding PickPositionCommand}"/>
+                                        </Grid>
+                                    </StackPanel>
+                                </GroupBox>
+                            </StackPanel>
+
+                            <!-- Key Properties -->
+                            <StackPanel Visibility="{Binding IsKeyAction, Converter={StaticResource BoolToVis}}">
+                                <GroupBox Header="Key Settings" Style="{StaticResource GroupBoxStyle}">
+                                    <StackPanel>
+                                        <TextBlock Text="Key:" Style="{StaticResource LabelStyle}"/>
+                                        <ComboBox Style="{StaticResource ComboStyle}"
+                                                  SelectedValue="{Binding SelectedAction.Key}"
+                                                  SelectedValuePath="Tag">
+                                            <ComboBoxItem Content="A" Tag="A"/>
+                                            <ComboBoxItem Content="B" Tag="B"/>
+                                            <ComboBoxItem Content="C" Tag="C"/>
+                                            <ComboBoxItem Content="D" Tag="D"/>
+                                            <ComboBoxItem Content="E" Tag="E"/>
+                                            <ComboBoxItem Content="F" Tag="F"/>
+                                            <ComboBoxItem Content="G" Tag="G"/>
+                                            <ComboBoxItem Content="H" Tag="H"/>
+                                            <ComboBoxItem Content="I" Tag="I"/>
+                                            <ComboBoxItem Content="J" Tag="J"/>
+                                            <ComboBoxItem Content="K" Tag="K"/>
+                                            <ComboBoxItem Content="L" Tag="L"/>
+                                            <ComboBoxItem Content="M" Tag="M"/>
+                                            <ComboBoxItem Content="N" Tag="N"/>
+                                            <ComboBoxItem Content="O" Tag="O"/>
+                                            <ComboBoxItem Content="P" Tag="P"/>
+                                            <ComboBoxItem Content="Q" Tag="Q"/>
+                                            <ComboBoxItem Content="R" Tag="R"/>
+                                            <ComboBoxItem Content="S" Tag="S"/>
+                                            <ComboBoxItem Content="T" Tag="T"/>
+                                            <ComboBoxItem Content="U" Tag="U"/>
+                                            <ComboBoxItem Content="V" Tag="V"/>
+                                            <ComboBoxItem Content="W" Tag="W"/>
+                                            <ComboBoxItem Content="X" Tag="X"/>
+                                            <ComboBoxItem Content="Y" Tag="Y"/>
+                                            <ComboBoxItem Content="Z" Tag="Z"/>
+                                            <ComboBoxItem Content="0" Tag="0"/>
+                                            <ComboBoxItem Content="1" Tag="1"/>
+                                            <ComboBoxItem Content="2" Tag="2"/>
+                                            <ComboBoxItem Content="3" Tag="3"/>
+                                            <ComboBoxItem Content="4" Tag="4"/>
+                                            <ComboBoxItem Content="5" Tag="5"/>
+                                            <ComboBoxItem Content="6" Tag="6"/>
+                                            <ComboBoxItem Content="7" Tag="7"/>
+                                            <ComboBoxItem Content="8" Tag="8"/>
+                                            <ComboBoxItem Content="9" Tag="9"/>
+                                            <ComboBoxItem Content="Space" Tag="SPACE"/>
+                                            <ComboBoxItem Content="Enter" Tag="ENTER"/>
+                                            <ComboBoxItem Content="Tab" Tag="TAB"/>
+                                            <ComboBoxItem Content="Escape" Tag="ESCAPE"/>
+                                            <ComboBoxItem Content="Backspace" Tag="BACKSPACE"/>
+                                            <ComboBoxItem Content="Delete" Tag="DELETE"/>
+                                            <ComboBoxItem Content="Up" Tag="UP"/>
+                                            <ComboBoxItem Content="Down" Tag="DOWN"/>
+                                            <ComboBoxItem Content="Left" Tag="LEFT"/>
+                                            <ComboBoxItem Content="Right" Tag="RIGHT"/>
+                                            <ComboBoxItem Content="F1" Tag="F1"/>
+                                            <ComboBoxItem Content="F2" Tag="F2"/>
+                                            <ComboBoxItem Content="F3" Tag="F3"/>
+                                            <ComboBoxItem Content="F5" Tag="F5"/>
+                                            <ComboBoxItem Content="F6" Tag="F6"/>
+                                            <ComboBoxItem Content="F7" Tag="F7"/>
+                                            <ComboBoxItem Content="F9" Tag="F9"/>
+                                            <ComboBoxItem Content="F10" Tag="F10"/>
+                                            <ComboBoxItem Content="F11" Tag="F11"/>
+                                            <ComboBoxItem Content="F12" Tag="F12"/>
+                                        </ComboBox>
+                                        <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+                                            <CheckBox Content="Ctrl" IsChecked="{Binding SelectedAction.UseCtrl}" Margin="0,0,15,0"/>
+                                            <CheckBox Content="Alt" IsChecked="{Binding SelectedAction.UseAlt}" Margin="0,0,15,0"/>
+                                            <CheckBox Content="Shift" IsChecked="{Binding SelectedAction.UseShift}"/>
+                                        </StackPanel>
+                                    </StackPanel>
+                                </GroupBox>
+                            </StackPanel>
+
+                            <!-- Common Properties (for all action types) -->
+                            <StackPanel Visibility="{Binding HasSelectedAction, Converter={StaticResource BoolToVis}}">
+                                <GroupBox Header="Timing" Style="{StaticResource GroupBoxStyle}">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="Auto"/>
+                                        </Grid.RowDefinitions>
+                                        <TextBlock Grid.Row="0" Grid.Column="0" Text="Delay (ms):" Style="{StaticResource LabelStyle}"/>
+                                        <TextBox Grid.Row="0" Grid.Column="1" Style="{StaticResource InputStyle}"
+                                                 Text="{Binding SelectedAction.DelayMs, UpdateSourceTrigger=PropertyChanged}"/>
+                                        <TextBlock Grid.Row="1" Grid.Column="0" Text="Repeat:" Style="{StaticResource LabelStyle}"/>
+                                        <TextBox Grid.Row="1" Grid.Column="1" Style="{StaticResource InputStyle}"
+                                                 Text="{Binding SelectedAction.RepeatCount, UpdateSourceTrigger=PropertyChanged}"/>
+                                    </Grid>
+                                </GroupBox>
+                            </StackPanel>
+                        </StackPanel>
+                    </ScrollViewer>
+                </GroupBox>
+
+                <!-- Profiles Panel -->
+                <GroupBox Grid.Row="1" Header="Saved Profiles" Margin="5,5,0,0">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+                        <ComboBox Grid.Row="0" Style="{StaticResource ComboStyle}"
+                                  ItemsSource="{Binding ProfileNames}"
+                                  SelectedItem="{Binding SelectedProfileName}"/>
+                        <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,5,0,0">
+                            <Button Content="Load" Style="{StaticResource ActionButtonStyle}"
+                                    Command="{Binding LoadProfileCommand}"/>
+                            <Button Content="Delete" Style="{StaticResource ActionButtonStyle}"
+                                    Command="{Binding DeleteProfileCommand}"/>
+                            <Button Content="New" Style="{StaticResource ActionButtonStyle}"
+                                    Command="{Binding NewProfileCommand}"/>
+                        </StackPanel>
+                    </Grid>
+                </GroupBox>
+            </Grid>
+        </Grid>
+
+        <!-- Loop Settings Bar -->
+        <Border Grid.Row="2" Background="#F5F5F5" Padding="10,8">
+            <StackPanel Orientation="Horizontal">
+                <CheckBox Content="Loop actions" IsChecked="{Binding LoopActions}"
+                          VerticalAlignment="Center" Margin="0,0,20,0"/>
+                <TextBlock Text="Loop count (0=infinite):" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                <TextBox Width="60" Style="{StaticResource InputStyle}"
+                         Text="{Binding LoopCount, UpdateSourceTrigger=PropertyChanged}"
+                         IsEnabled="{Binding LoopActions}"/>
+                <TextBlock Text="Delay between loops (ms):" VerticalAlignment="Center" Margin="20,0,8,0"/>
+                <TextBox Width="60" Style="{StaticResource InputStyle}"
+                         Text="{Binding DelayBetweenLoops, UpdateSourceTrigger=PropertyChanged}"
+                         IsEnabled="{Binding LoopActions}"/>
+            </StackPanel>
+        </Border>
+
+        <!-- Status Bar & Controls -->
+        <Border Grid.Row="3" Background="#E8E8E8" Padding="10">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
-                <Button Grid.Column="0"
-                        Content="{Binding IsRunning, Converter={StaticResource StartStopTextConverter}}"
-                        Padding="15,10" Margin="0,0,5,0"
-                        FontWeight="Bold"
-                        Command="{Binding ToggleCommand}"/>
+
+                <TextBlock Grid.Column="0" Text="{Binding StatusText}"
+                           VerticalAlignment="Center" FontWeight="SemiBold"/>
+
                 <Button Grid.Column="1"
+                        Content="{Binding IsRunning, Converter={StaticResource StartStopTextConverter}}"
+                        Padding="20,10" Margin="0,0,8,0"
+                        FontWeight="Bold" FontSize="14"
+                        Command="{Binding ToggleCommand}"/>
+                <Button Grid.Column="2"
                         Content="Stop (F8)"
-                        Padding="15,10" Margin="5,0,0,0"
+                        Padding="20,10"
                         Command="{Binding StopCommand}"/>
             </Grid>
         </Border>

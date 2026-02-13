@@ -27,8 +27,23 @@ public class StartStopTextConverter : IValueConverter
     public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
     {
         if (value is bool isRunning)
-            return isRunning ? "Stop (F6)" : "Start (F6)";
-        return "Start (F6)";
+            return isRunning ? "Stop (F4)" : "Start (F4)";
+        return "Start (F4)";
+    }
+
+    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+    {
+        throw new NotImplementedException();
+    }
+}
+
+public class InverseBoolToVisibilityConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+    {
+        if (value is bool boolValue)
+            return boolValue ? Visibility.Collapsed : Visibility.Visible;
+        return Visibility.Visible;
     }
 
     public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)

@@ -5,6 +5,7 @@
              StartupUri="MainWindow.xaml">
     <Application.Resources>
         <helpers:InverseBoolConverter x:Key="InverseBoolConverter"/>
+        <helpers:InverseBoolToVisibilityConverter x:Key="InverseBoolToVisConverter"/>
         <helpers:StartStopTextConverter x:Key="StartStopTextConverter"/>
         <helpers:RecordButtonTextConverter x:Key="RecordButtonTextConverter"/>
         <helpers:IndexToVisibilityConverter x:Key="IndexToVisibilityConverter"/>

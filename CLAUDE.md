@@ -53,7 +53,7 @@ src/AutoClickKey/
 
 ## Key Bindings
 
-- F6: Start/Stop automation
+- F4: Start/Stop automation
 - F8: Emergency stop (stops everything)
 
 ## Profiles

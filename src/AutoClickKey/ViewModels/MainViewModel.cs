@@ -1,4 +1,6 @@
 using System;
+using System.Collections.ObjectModel;
+using System.Linq;
 using System.Windows;
 using System.Windows.Input;
 using AutoClickKey.Helpers;
@@ -9,142 +11,138 @@ namespace AutoClickKey.ViewModels;
 
 public class MainViewModel : ViewModelBase, IDisposable
 {
-    private readonly ClickerService _clickerService;
-    private readonly KeyboardService _keyboardService;
-    private readonly RecorderService _recorderService;
+    private readonly ActionRunnerService _actionRunner;
     private readonly ProfileService _profileService;
     private readonly HotkeyService _hotkeyService;
+    private readonly PositionPickerService _positionPicker;
+    private Window? _mainWindow;
 
-    private bool _isRunning;
-    private bool _isRecording;
-    private int _clickCount;
-    private int _keyCount;
-    private string _statusText = "Ready - Press F6 to Start";
+    public MainViewModel()
+    {
+        _actionRunner = new ActionRunnerService();
+        _profileService = new ProfileService();
+        _hotkeyService = new HotkeyService();
+        _positionPicker = new PositionPickerService();
+
+        // Setup position picker events
+        _positionPicker.PositionPicked += (_, pos) =>
+            Application.Current.Dispatcher.Invoke(() => OnPositionPicked(pos.X, pos.Y));
+        _positionPicker.PickingCancelled += (_, _) =>
+            Application.Current.Dispatcher.Invoke(() => OnPickingCancelled());
+
+        Actions = new ObservableCollection<ActionItem>();
+        ProfileNames = new ObservableCollection<string>();
+
+        // Setup event handlers
+        _actionRunner.ActionExecuted += (_, e) =>
+            Application.Current.Dispatcher.Invoke(() =>
+            {
+                CurrentActionIndex = e.ActionIndex;
+                CurrentLoopCount = e.LoopCount;
+            });
+        _actionRunner.Stopped += (_, _) =>
+            Application.Current.Dispatcher.Invoke(() => IsRunning = false);
+
+        // Setup commands
+        ToggleCommand = new RelayCommand(Toggle);
+        StopCommand = new RelayCommand(Stop);
+        AddClickCommand = new RelayCommand(AddClickAction);
+        AddKeyCommand = new RelayCommand(AddKeyAction);
+        AddDelayCommand = new RelayCommand(AddDelayAction);
+        RemoveActionCommand = new RelayCommand(RemoveSelectedAction, () => SelectedAction != null);
+        MoveUpCommand = new RelayCommand(MoveActionUp, () => SelectedAction != null && Actions.IndexOf(SelectedAction) > 0);
+        MoveDownCommand = new RelayCommand(MoveActionDown, () => SelectedAction != null && Actions.IndexOf(SelectedAction) < Actions.Count - 1);
+        DuplicateCommand = new RelayCommand(DuplicateAction, () => SelectedAction != null);
+        ClearAllCommand = new RelayCommand(ClearAllActions, () => Actions.Count > 0);
+        SaveProfileCommand = new RelayCommand(SaveProfile);
+        LoadProfileCommand = new RelayCommand(LoadSelectedProfile, () => !string.IsNullOrEmpty(SelectedProfileName));
+        DeleteProfileCommand = new RelayCommand(DeleteSelectedProfile, () => !string.IsNullOrEmpty(SelectedProfileName));
+        NewProfileCommand = new RelayCommand(NewProfile);
+        PickPositionCommand = new RelayCommand(PickPosition);
+
+        // Load profile names
+        RefreshProfileList();
+
+        // Add default action
+        if (Actions.Count == 0)
+        {
+            AddClickAction();
+        }
+    }
 
     #region Properties
 
-    // Auto Clicker Settings
-    private int _selectedMouseButton;
-    public int SelectedMouseButton
+    public ObservableCollection<ActionItem> Actions { get; }
+    public ObservableCollection<string> ProfileNames { get; }
+
+    private ActionItem? _selectedAction;
+    public ActionItem? SelectedAction
     {
-        get => _selectedMouseButton;
-        set => SetProperty(ref _selectedMouseButton, value);
+        get => _selectedAction;
+        set
+        {
+            if (SetProperty(ref _selectedAction, value))
+            {
+                OnPropertyChanged(nameof(HasSelectedAction));
+                OnPropertyChanged(nameof(IsClickAction));
+                OnPropertyChanged(nameof(IsKeyAction));
+                OnPropertyChanged(nameof(IsDelayAction));
+                (RemoveActionCommand as RelayCommand)?.RaiseCanExecuteChanged();
+                (MoveUpCommand as RelayCommand)?.RaiseCanExecuteChanged();
+                (MoveDownCommand as RelayCommand)?.RaiseCanExecuteChanged();
+                (DuplicateCommand as RelayCommand)?.RaiseCanExecuteChanged();
+            }
+        }
     }
 
-    private int _selectedClickType;
-    public int SelectedClickType
+    public bool HasSelectedAction => SelectedAction != null;
+    public bool IsClickAction => SelectedAction?.Type == ActionItemType.Click;
+    public bool IsKeyAction => SelectedAction?.Type == ActionItemType.KeyPress;
+    public bool IsDelayAction => SelectedAction?.Type == ActionItemType.Delay;
+
+    private string _currentProfileName = "Untitled";
+    public string CurrentProfileName
     {
-        get => _selectedClickType;
-        set => SetProperty(ref _selectedClickType, value);
+        get => _currentProfileName;
+        set => SetProperty(ref _currentProfileName, value);
     }
 
-    private int _clickInterval = 100;
-    public int ClickInterval
+    private string? _selectedProfileName;
+    public string? SelectedProfileName
     {
-        get => _clickInterval;
-        set => SetProperty(ref _clickInterval, Math.Max(1, value));
+        get => _selectedProfileName;
+        set
+        {
+            if (SetProperty(ref _selectedProfileName, value))
+            {
+                (LoadProfileCommand as RelayCommand)?.RaiseCanExecuteChanged();
+                (DeleteProfileCommand as RelayCommand)?.RaiseCanExecuteChanged();
+            }
+        }
     }
 
-    private bool _useCurrentPosition = true;
-    public bool UseCurrentPosition
+    private bool _loopActions = true;
+    public bool LoopActions
     {
-        get => _useCurrentPosition;
-        set => SetProperty(ref _useCurrentPosition, value);
+        get => _loopActions;
+        set => SetProperty(ref _loopActions, value);
     }
 
-    private int _fixedX;
-    public int FixedX
+    private int _loopCount;
+    public int LoopCount
     {
-        get => _fixedX;
-        set => SetProperty(ref _fixedX, value);
+        get => _loopCount;
+        set => SetProperty(ref _loopCount, Math.Max(0, value));
     }
 
-    private int _fixedY;
-    public int FixedY
+    private int _delayBetweenLoops;
+    public int DelayBetweenLoops
     {
-        get => _fixedY;
-        set => SetProperty(ref _fixedY, value);
+        get => _delayBetweenLoops;
+        set => SetProperty(ref _delayBetweenLoops, Math.Max(0, value));
     }
 
-    private bool _clickInfinite = true;
-    public bool ClickInfinite
-    {
-        get => _clickInfinite;
-        set => SetProperty(ref _clickInfinite, value);
-    }
-
-    private int _clickRepeatCount = 10;
-    public int ClickRepeatCount
-    {
-        get => _clickRepeatCount;
-        set => SetProperty(ref _clickRepeatCount, Math.Max(1, value));
-    }
-
-    // Auto Keyboard Settings
-    private int _selectedKeyboardMode;
-    public int SelectedKeyboardMode
-    {
-        get => _selectedKeyboardMode;
-        set => SetProperty(ref _selectedKeyboardMode, value);
-    }
-
-    private string _textToType = string.Empty;
-    public string TextToType
-    {
-        get => _textToType;
-        set => SetProperty(ref _textToType, value);
-    }
-
-    private string _selectedKey = string.Empty;
-    public string SelectedKey
-    {
-        get => _selectedKey;
-        set => SetProperty(ref _selectedKey, value);
-    }
-
-    private bool _useCtrl;
-    public bool UseCtrl
-    {
-        get => _useCtrl;
-        set => SetProperty(ref _useCtrl, value);
-    }
-
-    private bool _useAlt;
-    public bool UseAlt
-    {
-        get => _useAlt;
-        set => SetProperty(ref _useAlt, value);
-    }
-
-    private bool _useShift;
-    public bool UseShift
-    {
-        get => _useShift;
-        set => SetProperty(ref _useShift, value);
-    }
-
-    private int _keyInterval = 50;
-    public int KeyInterval
-    {
-        get => _keyInterval;
-        set => SetProperty(ref _keyInterval, Math.Max(1, value));
-    }
-
-    private bool _keyInfinite = true;
-    public bool KeyInfinite
-    {
-        get => _keyInfinite;
-        set => SetProperty(ref _keyInfinite, value);
-    }
-
-    private int _keyRepeatCount = 10;
-    public int KeyRepeatCount
-    {
-        get => _keyRepeatCount;
-        set => SetProperty(ref _keyRepeatCount, Math.Max(1, value));
-    }
-
-    // Status
+    private bool _isRunning;
     public bool IsRunning
     {
         get => _isRunning;
@@ -157,42 +155,38 @@ public class MainViewModel : ViewModelBase, IDisposable
         }
     }
 
-    public bool IsRecording
+    private int _currentActionIndex;
+    public int CurrentActionIndex
     {
-        get => _isRecording;
-        set
-        {
-            if (SetProperty(ref _isRecording, value))
-            {
-                UpdateStatusText();
-            }
-        }
+        get => _currentActionIndex;
+        set => SetProperty(ref _currentActionIndex, value);
     }
 
-    public int ClickCount
+    private int _currentLoopCount;
+    public int CurrentLoopCount
     {
-        get => _clickCount;
-        set => SetProperty(ref _clickCount, value);
+        get => _currentLoopCount;
+        set => SetProperty(ref _currentLoopCount, value);
     }
 
-    public int KeyCount
-    {
-        get => _keyCount;
-        set => SetProperty(ref _keyCount, value);
-    }
-
+    private string _statusText = "Ready - Press F4 to Start";
     public string StatusText
     {
         get => _statusText;
         set => SetProperty(ref _statusText, value);
     }
 
-    // Active Tab
-    private int _selectedTab;
-    public int SelectedTab
+    private bool _isPickingPosition;
+    public bool IsPickingPosition
     {
-        get => _selectedTab;
-        set => SetProperty(ref _selectedTab, value);
+        get => _isPickingPosition;
+        set
+        {
+            if (SetProperty(ref _isPickingPosition, value))
+            {
+                UpdateStatusText();
+            }
+        }
     }
 
     #endregion
@@ -201,52 +195,203 @@ public class MainViewModel : ViewModelBase, IDisposable
 
     public ICommand ToggleCommand { get; }
     public ICommand StopCommand { get; }
-    public ICommand RecordCommand { get; }
-    public ICommand PlayCommand { get; }
+    public ICommand AddClickCommand { get; }
+    public ICommand AddKeyCommand { get; }
+    public ICommand AddDelayCommand { get; }
+    public ICommand RemoveActionCommand { get; }
+    public ICommand MoveUpCommand { get; }
+    public ICommand MoveDownCommand { get; }
+    public ICommand DuplicateCommand { get; }
+    public ICommand ClearAllCommand { get; }
+    public ICommand SaveProfileCommand { get; }
+    public ICommand LoadProfileCommand { get; }
+    public ICommand DeleteProfileCommand { get; }
+    public ICommand NewProfileCommand { get; }
     public ICommand PickPositionCommand { get; }
 
     #endregion
 
-    public MainViewModel()
-    {
-        _clickerService = new ClickerService();
-        _keyboardService = new KeyboardService();
-        _recorderService = new RecorderService();
-        _profileService = new ProfileService();
-        _hotkeyService = new HotkeyService();
-
-        // Setup event handlers
-        _clickerService.ClickPerformed += (_, count) =>
-            Application.Current.Dispatcher.Invoke(() => ClickCount = count);
-        _clickerService.Stopped += (_, _) =>
-            Application.Current.Dispatcher.Invoke(() => IsRunning = false);
-
-        _keyboardService.KeyPressed += (_, count) =>
-            Application.Current.Dispatcher.Invoke(() => KeyCount = count);
-        _keyboardService.Stopped += (_, _) =>
-            Application.Current.Dispatcher.Invoke(() => IsRunning = false);
-
-        _recorderService.RecordingStopped += (_, _) =>
-            Application.Current.Dispatcher.Invoke(() => IsRecording = false);
-
-        // Setup commands
-        ToggleCommand = new RelayCommand(Toggle);
-        StopCommand = new RelayCommand(Stop);
-        RecordCommand = new RelayCommand(ToggleRecording);
-        PlayCommand = new RelayCommand(PlayRecording);
-        PickPositionCommand = new RelayCommand(PickPosition);
-    }
+    #region Hotkey Setup
 
     public void InitializeHotkeys(Window window)
     {
+        _mainWindow = window;
         _hotkeyService.Initialize(window);
 
-        // F6 - Start/Stop
-        _hotkeyService.RegisterHotkey(Win32Api.MOD_NONE, 0x75, Toggle);
+        // F4 - Start/Stop
+        _hotkeyService.RegisterHotkey(Win32Api.MOD_NONE, 0x73, Toggle);
 
         // F8 - Emergency Stop
-        _hotkeyService.RegisterHotkey(Win32Api.MOD_NONE, 0x77, EmergencyStop);
+        _hotkeyService.RegisterHotkey(Win32Api.MOD_NONE, 0x77, Stop);
+
+        // Escape - Cancel picking
+        _hotkeyService.RegisterHotkey(Win32Api.MOD_NONE, 0x1B, CancelPicking);
     }
+
+    private void CancelPicking()
+    {
+        if (IsPickingPosition)
+        {
+            _positionPicker.CancelPicking();
+        }
+    }
+
+    #endregion
+
+    #region Action Methods
+
+    private void AddClickAction()
+    {
+        var action = new ActionItem
+        {
+            Type = ActionItemType.Click,
+            MouseButton = 0,
+            ClickType = 0,
+            UseCurrentPosition = true,
+            DelayMs = 100
+        };
+        Actions.Add(action);
+        SelectedAction = action;
+        (ClearAllCommand as RelayCommand)?.RaiseCanExecuteChanged();
+    }
+
+    private void AddKeyAction()
+    {
+        var action = new ActionItem
+        {
+            Type = ActionItemType.KeyPress,
+            Key = "A",
+            DelayMs = 100
+        };
+        Actions.Add(action);
+        SelectedAction = action;
+        (ClearAllCommand as RelayCommand)?.RaiseCanExecuteChanged();
+    }
+
+    private void AddDelayAction()
+    {
+        var action = new ActionItem
+        {
+            Type = ActionItemType.Delay,
+            DelayMs = 500
+        };
+        Actions.Add(action);
+        SelectedAction = action;
+        (ClearAllCommand as RelayCommand)?.RaiseCanExecuteChanged();
+    }
+
+    private void RemoveSelectedAction()
+    {
+        if (SelectedAction == null) return;
+
+        var index = Actions.IndexOf(SelectedAction);
+        Actions.Remove(SelectedAction);
+
+        if (Actions.Count > 0)
+        {
+            SelectedAction = Actions[Math.Min(index, Actions.Count - 1)];
+        }
+        else
+        {
+            SelectedAction = null;
+        }
+        (ClearAllCommand as RelayCommand)?.RaiseCanExecuteChanged();
+    }
+
+    private void MoveActionUp()
+    {
+        if (SelectedAction == null) return;
+
+        var index = Actions.IndexOf(SelectedAction);
+        if (index > 0)
+        {
+            Actions.Move(index, index - 1);
+        }
+        (MoveUpCommand as RelayCommand)?.RaiseCanExecuteChanged();
+        (MoveDownCommand as RelayCommand)?.RaiseCanExecuteChanged();
+    }
+
+    private void MoveActionDown()
+    {
+        if (SelectedAction == null) return;
+
+        var index = Actions.IndexOf(SelectedAction);
+        if (index < Actions.Count - 1)
+        {
+            Actions.Move(index, index + 1);
+        }
+        (MoveUpCommand as RelayCommand)?.RaiseCanExecuteChanged();
+        (MoveDownCommand as RelayCommand)?.RaiseCanExecuteChanged();
+    }
+
+    private void DuplicateAction()
+    {
+        if (SelectedAction == null) return;
+
+        var clone = (ActionItem)SelectedAction.Clone();
+        var index = Actions.IndexOf(SelectedAction);
+        Actions.Insert(index + 1, clone);
+        SelectedAction = clone;
+    }
+
+    private void ClearAllActions()
+    {
+        Actions.Clear();
+        SelectedAction = null;
+        (ClearAllCommand as RelayCommand)?.RaiseCanExecuteChanged();
+    }
+
+    private void PickPosition()
+    {
+        if (SelectedAction == null || SelectedAction.Type != ActionItemType.Click) return;
+        if (IsPickingPosition) return;
+
+        IsPickingPosition = true;
+
+        // Minimize window so user can click anywhere
+        if (_mainWindow != null)
+        {
+            _mainWindow.WindowState = WindowState.Minimized;
+        }
+
+        _positionPicker.StartPicking();
+    }
+
+    private void OnPositionPicked(int x, int y)
+    {
+        IsPickingPosition = false;
+
+        // Restore window
+        if (_mainWindow != null)
+        {
+            _mainWindow.WindowState = WindowState.Normal;
+            _mainWindow.Activate();
+        }
+
+        if (SelectedAction != null && SelectedAction.Type == ActionItemType.Click)
+        {
+            SelectedAction.FixedX = x;
+            SelectedAction.FixedY = y;
+            SelectedAction.UseCurrentPosition = false;
+            OnPropertyChanged(nameof(SelectedAction));
+        }
+    }
+
+    private void OnPickingCancelled()
+    {
+        IsPickingPosition = false;
+
+        // Restore window
+        if (_mainWindow != null)
+        {
+            _mainWindow.WindowState = WindowState.Normal;
+            _mainWindow.Activate();
+        }
+    }
+
+    #endregion
+
+    #region Run Methods
 
     private void Toggle()
     {
@@ -260,147 +405,119 @@ public class MainViewModel : ViewModelBase, IDisposable
         }
     }
 
-    private async void Start()
+    private void Start()
     {
-        IsRunning = true;
-        ClickCount = 0;
-        KeyCount = 0;
+        if (Actions.Count == 0) return;
 
-        // Start based on selected tab
-        if (SelectedTab == 0) // Auto Clicker
-        {
-            var settings = new ClickerSettings
-            {
-                MouseButton = (Helpers.MouseButton)SelectedMouseButton,
-                ClickType = (ClickType)SelectedClickType,
-                IntervalMs = ClickInterval,
-                PositionMode = UseCurrentPosition ? PositionMode.CurrentPosition : PositionMode.FixedPosition,
-                FixedX = FixedX,
-                FixedY = FixedY,
-                RepeatMode = ClickInfinite ? RepeatMode.Infinite : RepeatMode.Count,
-                RepeatCount = ClickRepeatCount
-            };
-            await _clickerService.StartAsync(settings);
-        }
-        else if (SelectedTab == 1) // Auto Keyboard
-        {
-            var settings = new KeyboardSettings
-            {
-                Mode = (KeyboardMode)SelectedKeyboardMode,
-                TextToType = TextToType,
-                KeyCode = ParseKeyCode(SelectedKey),
-                UseCtrl = UseCtrl,
-                UseAlt = UseAlt,
-                UseShift = UseShift,
-                IntervalMs = KeyInterval,
-                RepeatMode = KeyInfinite ? RepeatMode.Infinite : RepeatMode.Count,
-                RepeatCount = KeyRepeatCount
-            };
-            await _keyboardService.StartAsync(settings);
-        }
+        IsRunning = true;
+        CurrentActionIndex = 0;
+        CurrentLoopCount = 0;
+
+        var enabledActions = Actions.Where(a => a.IsEnabled).ToList();
+        _ = _actionRunner.RunAsync(enabledActions, LoopActions, LoopCount, DelayBetweenLoops);
     }
 
     private void Stop()
     {
-        _clickerService.Stop();
-        _keyboardService.Stop();
+        _actionRunner.Stop();
         IsRunning = false;
-    }
-
-    private void EmergencyStop()
-    {
-        Stop();
-        _recorderService.StopRecording();
-        _recorderService.StopPlayback();
-        IsRecording = false;
-    }
-
-    private void ToggleRecording()
-    {
-        if (IsRecording)
-        {
-            _recorderService.StopRecording();
-            IsRecording = false;
-        }
-        else
-        {
-            _recorderService.StartRecording();
-            IsRecording = true;
-        }
-    }
-
-    private async void PlayRecording()
-    {
-        if (_recorderService.IsPlaying)
-        {
-            _recorderService.StopPlayback();
-        }
-        else
-        {
-            await _recorderService.PlayAsync();
-        }
-    }
-
-    private void PickPosition()
-    {
-        var position = Win32Api.GetCursorPosition();
-        FixedX = position.X;
-        FixedY = position.Y;
     }
 
     private void UpdateStatusText()
     {
-        if (IsRecording)
+        if (IsPickingPosition)
         {
-            StatusText = "Recording... Press F8 to Stop";
+            StatusText = "Click anywhere to pick position (Esc to cancel)";
         }
         else if (IsRunning)
         {
-            StatusText = "Running... Press F6 to Stop";
+            StatusText = $"Running... Loop {CurrentLoopCount} - Press F4 to Stop";
         }
         else
         {
-            StatusText = "Ready - Press F6 to Start";
+            StatusText = "Ready - Press F4 to Start";
         }
     }
 
-    private static ushort ParseKeyCode(string key)
+    #endregion
+
+    #region Profile Methods
+
+    private void RefreshProfileList()
     {
-        if (string.IsNullOrEmpty(key)) return 0;
-
-        // Try to parse as virtual key code
-        if (key.Length == 1)
+        ProfileNames.Clear();
+        foreach (var name in _profileService.GetAllProfileNames())
         {
-            return (ushort)char.ToUpper(key[0]);
+            ProfileNames.Add(name);
+        }
+    }
+
+    private void SaveProfile()
+    {
+        var profile = new Profile
+        {
+            Name = CurrentProfileName,
+            Actions = Actions.ToList(),
+            LoopActions = LoopActions,
+            LoopCount = LoopCount,
+            DelayBetweenLoops = DelayBetweenLoops,
+            ModifiedAt = DateTime.Now
+        };
+
+        _profileService.SaveProfile(profile);
+        RefreshProfileList();
+        SelectedProfileName = CurrentProfileName;
+    }
+
+    private void LoadSelectedProfile()
+    {
+        if (string.IsNullOrEmpty(SelectedProfileName)) return;
+
+        var profile = _profileService.LoadProfile(SelectedProfileName);
+        if (profile == null) return;
+
+        Actions.Clear();
+        foreach (var action in profile.Actions)
+        {
+            Actions.Add(action);
         }
 
-        // Handle special keys
-        return key.ToUpper() switch
+        CurrentProfileName = profile.Name;
+        LoopActions = profile.LoopActions;
+        LoopCount = profile.LoopCount;
+        DelayBetweenLoops = profile.DelayBetweenLoops;
+
+        if (Actions.Count > 0)
         {
-            "ENTER" => 0x0D,
-            "TAB" => 0x09,
-            "SPACE" => 0x20,
-            "BACKSPACE" => 0x08,
-            "DELETE" => 0x2E,
-            "ESCAPE" or "ESC" => 0x1B,
-            "F1" => 0x70,
-            "F2" => 0x71,
-            "F3" => 0x72,
-            "F4" => 0x73,
-            "F5" => 0x74,
-            "F6" => 0x75,
-            "F7" => 0x76,
-            "F8" => 0x77,
-            "F9" => 0x78,
-            "F10" => 0x79,
-            "F11" => 0x7A,
-            "F12" => 0x7B,
-            _ => 0
-        };
+            SelectedAction = Actions[0];
+        }
     }
+
+    private void DeleteSelectedProfile()
+    {
+        if (string.IsNullOrEmpty(SelectedProfileName)) return;
+
+        _profileService.DeleteProfile(SelectedProfileName);
+        RefreshProfileList();
+        SelectedProfileName = null;
+    }
+
+    private void NewProfile()
+    {
+        Actions.Clear();
+        CurrentProfileName = "Untitled";
+        LoopActions = true;
+        LoopCount = 0;
+        DelayBetweenLoops = 0;
+        SelectedAction = null;
+        AddClickAction();
+    }
+
+    #endregion
 
     public void Dispose()
     {
         _hotkeyService.Dispose();
+        _positionPicker.Dispose();
     }
 }
