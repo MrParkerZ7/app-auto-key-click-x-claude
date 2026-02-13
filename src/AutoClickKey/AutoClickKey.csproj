@@ -13,4 +13,8 @@
     <Resource Include="Assets\app-icon-v1.png" />
   </ItemGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="AutoClickKey.Tests" />
+  </ItemGroup>
+
 </Project>

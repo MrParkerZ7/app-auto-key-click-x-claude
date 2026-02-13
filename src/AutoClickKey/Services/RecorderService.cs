@@ -10,7 +10,8 @@ namespace AutoClickKey.Services;
 
 public class RecorderService
 {
-    private readonly List<RecordedAction> _recordedActions = new();
+    private readonly List<RecordedAction> _recordedActions = new ();
+
     private CancellationTokenSource? _recordCts;
     private CancellationTokenSource? _playCts;
     private Stopwatch? _stopwatch;
@@ -18,17 +19,24 @@ public class RecorderService
     private bool _isRecording;
     private bool _isPlaying;
 
-    public bool IsRecording => _isRecording;
-    public bool IsPlaying => _isPlaying;
-    public IReadOnlyList<RecordedAction> RecordedActions => _recordedActions.AsReadOnly();
-
     public event EventHandler<RecordedAction>? ActionRecorded;
+
     public event EventHandler? RecordingStopped;
+
     public event EventHandler? PlaybackStopped;
+
+    public bool IsRecording => _isRecording;
+
+    public bool IsPlaying => _isPlaying;
+
+    public IReadOnlyList<RecordedAction> RecordedActions => _recordedActions.AsReadOnly();
 
     public void StartRecording()
     {
-        if (_isRecording) return;
+        if (_isRecording)
+        {
+            return;
+        }
 
         _recordedActions.Clear();
         _isRecording = true;
@@ -38,6 +46,74 @@ public class RecorderService
 
         // Start polling for mouse/keyboard state
         Task.Run(() => RecordingLoop(_recordCts.Token));
+    }
+
+    public void StopRecording()
+    {
+        if (!_isRecording)
+        {
+            return;
+        }
+
+        _recordCts?.Cancel();
+        _stopwatch?.Stop();
+        _isRecording = false;
+        RecordingStopped?.Invoke(this, EventArgs.Empty);
+    }
+
+    public async Task PlayAsync(float speedMultiplier = 1.0f)
+    {
+        if (_isPlaying || _recordedActions.Count == 0)
+        {
+            return;
+        }
+
+        _isPlaying = true;
+        _playCts = new CancellationTokenSource();
+
+        try
+        {
+            foreach (var action in _recordedActions)
+            {
+                if (_playCts.Token.IsCancellationRequested)
+                {
+                    break;
+                }
+
+                var delay = (int)(action.DelayFromPrevious / speedMultiplier);
+                if (delay > 0)
+                {
+                    await Task.Delay(delay, _playCts.Token);
+                }
+
+                ExecuteAction(action);
+            }
+        }
+        catch (TaskCanceledException)
+        {
+            // Expected when stopped
+        }
+        finally
+        {
+            _isPlaying = false;
+            PlaybackStopped?.Invoke(this, EventArgs.Empty);
+        }
+    }
+
+    public void StopPlayback()
+    {
+        _playCts?.Cancel();
+    }
+
+    public void ClearRecording()
+    {
+        _recordedActions.Clear();
+    }
+
+    public void LoadActions(List<RecordedAction> actions)
+    {
+        _recordedActions.Clear();
+        _recordedActions.AddRange(actions);
     }
 
     private async Task RecordingLoop(CancellationToken ct)
@@ -80,6 +156,7 @@ public class RecorderService
                     DelayFromPrevious = (int)(timestamp - _lastTimestamp)
                 });
             }
+
             lastLeftState = leftState;
 
             // Check for right click
@@ -96,6 +173,7 @@ public class RecorderService
                     DelayFromPrevious = (int)(timestamp - _lastTimestamp)
                 });
             }
+
             lastRightState = rightState;
 
             // Check for middle click
@@ -112,6 +190,7 @@ public class RecorderService
                     DelayFromPrevious = (int)(timestamp - _lastTimestamp)
                 });
             }
+
             lastMiddleState = middleState;
 
             await Task.Delay(10, ct).ConfigureAwait(false);
@@ -123,49 +202,6 @@ public class RecorderService
         _recordedActions.Add(action);
         _lastTimestamp = action.Timestamp;
         ActionRecorded?.Invoke(this, action);
-    }
-
-    public void StopRecording()
-    {
-        if (!_isRecording) return;
-
-        _recordCts?.Cancel();
-        _stopwatch?.Stop();
-        _isRecording = false;
-        RecordingStopped?.Invoke(this, EventArgs.Empty);
-    }
-
-    public async Task PlayAsync(float speedMultiplier = 1.0f)
-    {
-        if (_isPlaying || _recordedActions.Count == 0) return;
-
-        _isPlaying = true;
-        _playCts = new CancellationTokenSource();
-
-        try
-        {
-            foreach (var action in _recordedActions)
-            {
-                if (_playCts.Token.IsCancellationRequested) break;
-
-                var delay = (int)(action.DelayFromPrevious / speedMultiplier);
-                if (delay > 0)
-                {
-                    await Task.Delay(delay, _playCts.Token);
-                }
-
-                ExecuteAction(action);
-            }
-        }
-        catch (TaskCanceledException)
-        {
-            // Expected when stopped
-        }
-        finally
-        {
-            _isPlaying = false;
-            PlaybackStopped?.Invoke(this, EventArgs.Empty);
-        }
     }
 
     private void ExecuteAction(RecordedAction action)
@@ -182,26 +218,15 @@ public class RecorderService
 
             case ActionType.KeyPress:
                 if (action.IsKeyDown)
+                {
                     Win32Api.KeyDown(action.KeyCode);
+                }
                 else
+                {
                     Win32Api.KeyUp(action.KeyCode);
+                }
+
                 break;
         }
-    }
-
-    public void StopPlayback()
-    {
-        _playCts?.Cancel();
-    }
-
-    public void ClearRecording()
-    {
-        _recordedActions.Clear();
-    }
-
-    public void LoadActions(List<RecordedAction> actions)
-    {
-        _recordedActions.Clear();
-        _recordedActions.AddRange(actions);
     }
 }

@@ -10,15 +10,34 @@ public class ProfileService
 {
     private readonly string _profilesDirectory;
     private readonly JsonSerializerOptions _jsonOptions;
+    private readonly IFileSystem _fileSystem;
 
-    public ProfileService()
+    public ProfileService() : this(new FileSystem())
     {
+    }
+
+    public ProfileService(IFileSystem fileSystem)
+    {
+        _fileSystem = fileSystem;
         _profilesDirectory = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
             "AutoClickKey",
             "Profiles");
 
-        Directory.CreateDirectory(_profilesDirectory);
+        _fileSystem.CreateDirectory(_profilesDirectory);
+
+        _jsonOptions = new JsonSerializerOptions
+        {
+            WriteIndented = true
+        };
+    }
+
+    // Internal constructor for testing with custom directory
+    internal ProfileService(IFileSystem fileSystem, string profilesDirectory)
+    {
+        _fileSystem = fileSystem;
+        _profilesDirectory = profilesDirectory;
+        _fileSystem.CreateDirectory(_profilesDirectory);
 
         _jsonOptions = new JsonSerializerOptions
         {
@@ -31,7 +50,7 @@ public class ProfileService
         var fileName = SanitizeFileName(profile.Name) + ".json";
         var filePath = Path.Combine(_profilesDirectory, fileName);
         var json = JsonSerializer.Serialize(profile, _jsonOptions);
-        File.WriteAllText(filePath, json);
+        _fileSystem.WriteAllText(filePath, json);
     }
 
     public Profile? LoadProfile(string name)
@@ -39,10 +58,12 @@ public class ProfileService
         var fileName = SanitizeFileName(name) + ".json";
         var filePath = Path.Combine(_profilesDirectory, fileName);
 
-        if (!File.Exists(filePath))
+        if (!_fileSystem.FileExists(filePath))
+        {
             return null;
+        }
 
-        var json = File.ReadAllText(filePath);
+        var json = _fileSystem.ReadAllText(filePath);
         return JsonSerializer.Deserialize<Profile>(json, _jsonOptions);
     }
 
@@ -50,10 +71,12 @@ public class ProfileService
     {
         var profiles = new List<string>();
 
-        if (!Directory.Exists(_profilesDirectory))
+        if (!_fileSystem.DirectoryExists(_profilesDirectory))
+        {
             return profiles;
+        }
 
-        foreach (var file in Directory.GetFiles(_profilesDirectory, "*.json"))
+        foreach (var file in _fileSystem.GetFiles(_profilesDirectory, "*.json"))
         {
             var name = Path.GetFileNameWithoutExtension(file);
             profiles.Add(name);
@@ -67,24 +90,26 @@ public class ProfileService
         var fileName = SanitizeFileName(name) + ".json";
         var filePath = Path.Combine(_profilesDirectory, fileName);
 
-        if (File.Exists(filePath))
+        if (_fileSystem.FileExists(filePath))
         {
-            File.Delete(filePath);
+            _fileSystem.DeleteFile(filePath);
         }
     }
 
     public void ExportProfile(Profile profile, string exportPath)
     {
         var json = JsonSerializer.Serialize(profile, _jsonOptions);
-        File.WriteAllText(exportPath, json);
+        _fileSystem.WriteAllText(exportPath, json);
     }
 
     public Profile? ImportProfile(string importPath)
     {
-        if (!File.Exists(importPath))
+        if (!_fileSystem.FileExists(importPath))
+        {
             return null;
+        }
 
-        var json = File.ReadAllText(importPath);
+        var json = _fileSystem.ReadAllText(importPath);
         return JsonSerializer.Deserialize<Profile>(json, _jsonOptions);
     }
 
@@ -95,6 +120,7 @@ public class ProfileService
         {
             name = name.Replace(c, '_');
         }
+
         return name;
     }
 }

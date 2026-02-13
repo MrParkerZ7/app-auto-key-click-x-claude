@@ -1,0 +1,76 @@
+# Global analyzer configuration
+is_global = true
+
+# StyleCop Rules - Suppress noisy/unnecessary rules
+# SA1633: File should have header - Not needed for this project
+dotnet_diagnostic.SA1633.severity = none
+
+# SA1600-SA1615: Documentation comments - Not needed for internal projects
+dotnet_diagnostic.SA1600.severity = none
+dotnet_diagnostic.SA1601.severity = none
+dotnet_diagnostic.SA1602.severity = none
+dotnet_diagnostic.SA1604.severity = none
+dotnet_diagnostic.SA1605.severity = none
+dotnet_diagnostic.SA1606.severity = none
+dotnet_diagnostic.SA1607.severity = none
+dotnet_diagnostic.SA1608.severity = none
+dotnet_diagnostic.SA1609.severity = none
+dotnet_diagnostic.SA1610.severity = none
+dotnet_diagnostic.SA1611.severity = none
+dotnet_diagnostic.SA1612.severity = none
+dotnet_diagnostic.SA1613.severity = none
+dotnet_diagnostic.SA1614.severity = none
+dotnet_diagnostic.SA1615.severity = none
+dotnet_diagnostic.SA1616.severity = none
+dotnet_diagnostic.SA1617.severity = none
+dotnet_diagnostic.SA1618.severity = none
+dotnet_diagnostic.SA1619.severity = none
+dotnet_diagnostic.SA1620.severity = none
+dotnet_diagnostic.SA1621.severity = none
+dotnet_diagnostic.SA1622.severity = none
+dotnet_diagnostic.SA1623.severity = none
+dotnet_diagnostic.SA1624.severity = none
+dotnet_diagnostic.SA1625.severity = none
+dotnet_diagnostic.SA1626.severity = none
+dotnet_diagnostic.SA1627.severity = none
+dotnet_diagnostic.SA1629.severity = none
+dotnet_diagnostic.SA1634.severity = none
+dotnet_diagnostic.SA1635.severity = none
+dotnet_diagnostic.SA1636.severity = none
+dotnet_diagnostic.SA1637.severity = none
+dotnet_diagnostic.SA1638.severity = none
+dotnet_diagnostic.SA1639.severity = none
+dotnet_diagnostic.SA1640.severity = none
+dotnet_diagnostic.SA1641.severity = none
+dotnet_diagnostic.SA1642.severity = none
+dotnet_diagnostic.SA1643.severity = none
+dotnet_diagnostic.SA1648.severity = none
+dotnet_diagnostic.SA1649.severity = none
+dotnet_diagnostic.SA1651.severity = none
+
+# SA1101: Prefix local calls with this - Personal preference, disable
+dotnet_diagnostic.SA1101.severity = none
+
+# SA1200: Using directives should be placed correctly - Handled by editorconfig
+dotnet_diagnostic.SA1200.severity = none
+
+# SA1413: Use trailing comma - Disable as it's personal preference
+dotnet_diagnostic.SA1413.severity = none
+
+# SA1309: Field names should not begin with underscore - Common convention, disable
+dotnet_diagnostic.SA1309.severity = none
+
+# SA1503: Braces should not be omitted - Handled by editorconfig
+dotnet_diagnostic.SA1503.severity = none
+
+# SA1128: Put constructor initializers on their own line - Disable for compact code
+dotnet_diagnostic.SA1128.severity = none
+
+# CS1591: Missing XML comment for publicly visible type or member
+dotnet_diagnostic.CS1591.severity = none
+
+# SA0001: XML comment analysis is disabled - expected when no XML docs
+dotnet_diagnostic.SA0001.severity = none
+
+# SA1115: Parameter should begin on line after previous - too strict for generated code
+dotnet_diagnostic.SA1115.severity = none

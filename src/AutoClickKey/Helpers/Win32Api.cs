@@ -1,6 +1,8 @@
 using System;
 using System.Runtime.InteropServices;
 
+#pragma warning disable SA1201 // Elements should appear in the correct order - P/Invoke pattern
+
 namespace AutoClickKey.Helpers;
 
 /// <summary>
@@ -8,67 +10,41 @@ namespace AutoClickKey.Helpers;
 /// </summary>
 public static class Win32Api
 {
-    #region Mouse Constants
-
-    public const int MOUSEEVENTF_LEFTDOWN = 0x0002;
-    public const int MOUSEEVENTF_LEFTUP = 0x0004;
-    public const int MOUSEEVENTF_RIGHTDOWN = 0x0008;
-    public const int MOUSEEVENTF_RIGHTUP = 0x0010;
-    public const int MOUSEEVENTF_MIDDLEDOWN = 0x0020;
-    public const int MOUSEEVENTF_MIDDLEUP = 0x0040;
-    public const int MOUSEEVENTF_ABSOLUTE = 0x8000;
-    public const int MOUSEEVENTF_MOVE = 0x0001;
-
-    #endregion
-
-    #region Keyboard Constants
-
-    public const int KEYEVENTF_KEYDOWN = 0x0000;
-    public const int KEYEVENTF_KEYUP = 0x0002;
-    public const int KEYEVENTF_EXTENDEDKEY = 0x0001;
-
-    #endregion
-
-    #region Input Type Constants
-
-    public const int INPUT_MOUSE = 0;
-    public const int INPUT_KEYBOARD = 1;
-
-    #endregion
-
-    #region Hotkey Constants
-
-    public const int WM_HOTKEY = 0x0312;
-    public const int MOD_NONE = 0x0000;
-    public const int MOD_ALT = 0x0001;
-    public const int MOD_CONTROL = 0x0002;
-    public const int MOD_SHIFT = 0x0004;
-    public const int MOD_WIN = 0x0008;
-
-    #endregion
-
-    #region Mouse Hook Constants
-
-    public const int WH_MOUSE_LL = 14;
-    public const int WM_LBUTTONDOWN = 0x0201;
-    public const int WM_RBUTTONDOWN = 0x0204;
-    public const int WM_MBUTTONDOWN = 0x0207;
+    public const int MOUSEEVENTFLEFTDOWN = 0x0002;
+    public const int MOUSEEVENTFLEFTUP = 0x0004;
+    public const int MOUSEEVENTFRIGHTDOWN = 0x0008;
+    public const int MOUSEEVENTFRIGHTUP = 0x0010;
+    public const int MOUSEEVENTFMIDDLEDOWN = 0x0020;
+    public const int MOUSEEVENTFMIDDLEUP = 0x0040;
+    public const int MOUSEEVENTFABSOLUTE = 0x8000;
+    public const int MOUSEEVENTFMOVE = 0x0001;
+    public const int KEYEVENTFKEYDOWN = 0x0000;
+    public const int KEYEVENTFKEYUP = 0x0002;
+    public const int KEYEVENTFEXTENDEDKEY = 0x0001;
+    public const int INPUTMOUSE = 0;
+    public const int INPUTKEYBOARD = 1;
+    public const int WMHOTKEY = 0x0312;
+    public const int MODNONE = 0x0000;
+    public const int MODALT = 0x0001;
+    public const int MODCONTROL = 0x0002;
+    public const int MODSHIFT = 0x0004;
+    public const int MODWIN = 0x0008;
+    public const int WHMOUSELL = 14;
+    public const int WMLBUTTONDOWN = 0x0201;
+    public const int WMRBUTTONDOWN = 0x0204;
+    public const int WMMBUTTONDOWN = 0x0207;
 
     public delegate IntPtr LowLevelMouseProc(int nCode, IntPtr wParam, IntPtr lParam);
 
     [StructLayout(LayoutKind.Sequential)]
     public struct MSLLHOOKSTRUCT
     {
-        public POINT pt;
-        public uint mouseData;
-        public uint flags;
-        public uint time;
-        public IntPtr dwExtraInfo;
+        public POINT Pt;
+        public uint MouseData;
+        public uint Flags;
+        public uint Time;
+        public IntPtr DwExtraInfo;
     }
-
-    #endregion
-
-    #region Structures
 
     [StructLayout(LayoutKind.Sequential)]
     public struct POINT
@@ -80,43 +56,39 @@ public static class Win32Api
     [StructLayout(LayoutKind.Sequential)]
     public struct INPUT
     {
-        public int type;
-        public INPUTUNION union;
+        public int Type;
+        public INPUTUNION Union;
     }
 
     [StructLayout(LayoutKind.Explicit)]
     public struct INPUTUNION
     {
         [FieldOffset(0)]
-        public MOUSEINPUT mi;
+        public MOUSEINPUT Mi;
         [FieldOffset(0)]
-        public KEYBDINPUT ki;
+        public KEYBDINPUT Ki;
     }
 
     [StructLayout(LayoutKind.Sequential)]
     public struct MOUSEINPUT
     {
-        public int dx;
-        public int dy;
-        public int mouseData;
-        public int dwFlags;
-        public int time;
-        public IntPtr dwExtraInfo;
+        public int Dx;
+        public int Dy;
+        public int MouseData;
+        public int DwFlags;
+        public int Time;
+        public IntPtr DwExtraInfo;
     }
 
     [StructLayout(LayoutKind.Sequential)]
     public struct KEYBDINPUT
     {
-        public ushort wVk;
-        public ushort wScan;
-        public uint dwFlags;
-        public uint time;
-        public IntPtr dwExtraInfo;
+        public ushort WVk;
+        public ushort WScan;
+        public uint DwFlags;
+        public uint Time;
+        public IntPtr DwExtraInfo;
     }
-
-    #endregion
-
-    #region DLL Imports
 
     [DllImport("user32.dll")]
     public static extern bool GetCursorPos(out POINT lpPoint);
@@ -151,10 +123,6 @@ public static class Win32Api
     [DllImport("kernel32.dll")]
     public static extern IntPtr GetModuleHandle(string lpModuleName);
 
-    #endregion
-
-    #region Helper Methods
-
     public static POINT GetCursorPosition()
     {
         GetCursorPos(out POINT point);
@@ -168,16 +136,16 @@ public static class Win32Api
         switch (button)
         {
             case MouseButton.Left:
-                downFlag = MOUSEEVENTF_LEFTDOWN;
-                upFlag = MOUSEEVENTF_LEFTUP;
+                downFlag = MOUSEEVENTFLEFTDOWN;
+                upFlag = MOUSEEVENTFLEFTUP;
                 break;
             case MouseButton.Right:
-                downFlag = MOUSEEVENTF_RIGHTDOWN;
-                upFlag = MOUSEEVENTF_RIGHTUP;
+                downFlag = MOUSEEVENTFRIGHTDOWN;
+                upFlag = MOUSEEVENTFRIGHTUP;
                 break;
             case MouseButton.Middle:
-                downFlag = MOUSEEVENTF_MIDDLEDOWN;
-                upFlag = MOUSEEVENTF_MIDDLEUP;
+                downFlag = MOUSEEVENTFMIDDLEDOWN;
+                upFlag = MOUSEEVENTFMIDDLEUP;
                 break;
             default:
                 return;
@@ -187,19 +155,19 @@ public static class Win32Api
 
         inputs[0] = new INPUT
         {
-            type = INPUT_MOUSE,
-            union = new INPUTUNION
+            Type = INPUTMOUSE,
+            Union = new INPUTUNION
             {
-                mi = new MOUSEINPUT { dwFlags = downFlag }
+                Mi = new MOUSEINPUT { DwFlags = downFlag }
             }
         };
 
         inputs[1] = new INPUT
         {
-            type = INPUT_MOUSE,
-            union = new INPUTUNION
+            Type = INPUTMOUSE,
+            Union = new INPUTUNION
             {
-                mi = new MOUSEINPUT { dwFlags = upFlag }
+                Mi = new MOUSEINPUT { DwFlags = upFlag }
             }
         };
 
@@ -223,26 +191,26 @@ public static class Win32Api
 
         inputs[0] = new INPUT
         {
-            type = INPUT_KEYBOARD,
-            union = new INPUTUNION
+            Type = INPUTKEYBOARD,
+            Union = new INPUTUNION
             {
-                ki = new KEYBDINPUT
+                Ki = new KEYBDINPUT
                 {
-                    wVk = keyCode,
-                    dwFlags = KEYEVENTF_KEYDOWN
+                    WVk = keyCode,
+                    DwFlags = KEYEVENTFKEYDOWN
                 }
             }
         };
 
         inputs[1] = new INPUT
         {
-            type = INPUT_KEYBOARD,
-            union = new INPUTUNION
+            Type = INPUTKEYBOARD,
+            Union = new INPUTUNION
             {
-                ki = new KEYBDINPUT
+                Ki = new KEYBDINPUT
                 {
-                    wVk = keyCode,
-                    dwFlags = KEYEVENTF_KEYUP
+                    WVk = keyCode,
+                    DwFlags = KEYEVENTFKEYUP
                 }
             }
         };
@@ -256,13 +224,13 @@ public static class Win32Api
 
         inputs[0] = new INPUT
         {
-            type = INPUT_KEYBOARD,
-            union = new INPUTUNION
+            Type = INPUTKEYBOARD,
+            Union = new INPUTUNION
             {
-                ki = new KEYBDINPUT
+                Ki = new KEYBDINPUT
                 {
-                    wVk = keyCode,
-                    dwFlags = KEYEVENTF_KEYDOWN
+                    WVk = keyCode,
+                    DwFlags = KEYEVENTFKEYDOWN
                 }
             }
         };
@@ -276,21 +244,19 @@ public static class Win32Api
 
         inputs[0] = new INPUT
         {
-            type = INPUT_KEYBOARD,
-            union = new INPUTUNION
+            Type = INPUTKEYBOARD,
+            Union = new INPUTUNION
             {
-                ki = new KEYBDINPUT
+                Ki = new KEYBDINPUT
                 {
-                    wVk = keyCode,
-                    dwFlags = KEYEVENTF_KEYUP
+                    WVk = keyCode,
+                    DwFlags = KEYEVENTFKEYUP
                 }
             }
         };
 
         SendInput((uint)inputs.Length, inputs, Marshal.SizeOf<INPUT>());
     }
-
-    #endregion
 }
 
 public enum MouseButton

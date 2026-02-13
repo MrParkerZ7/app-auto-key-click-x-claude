@@ -9,9 +9,10 @@ namespace AutoClickKey.Services;
 
 public class HotkeyService : IDisposable
 {
+    private readonly Dictionary<int, Action> _hotkeyActions = new ();
+
     private IntPtr _windowHandle;
     private HwndSource? _source;
-    private readonly Dictionary<int, Action> _hotkeyActions = new();
     private int _currentId;
     private bool _isDisposed;
 
@@ -48,12 +49,25 @@ public class HotkeyService : IDisposable
         {
             Win32Api.UnregisterHotKey(_windowHandle, id);
         }
+
         _hotkeyActions.Clear();
+    }
+
+    public void Dispose()
+    {
+        if (_isDisposed)
+        {
+            return;
+        }
+
+        UnregisterAll();
+        _source?.RemoveHook(HwndHook);
+        _isDisposed = true;
     }
 
     private IntPtr HwndHook(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
     {
-        if (msg == Win32Api.WM_HOTKEY)
+        if (msg == Win32Api.WMHOTKEY)
         {
             var id = wParam.ToInt32();
             if (_hotkeyActions.TryGetValue(id, out var action))
@@ -62,15 +76,7 @@ public class HotkeyService : IDisposable
                 handled = true;
             }
         }
+
         return IntPtr.Zero;
-    }
-
-    public void Dispose()
-    {
-        if (_isDisposed) return;
-
-        UnregisterAll();
-        _source?.RemoveHook(HwndHook);
-        _isDisposed = true;
     }
 }

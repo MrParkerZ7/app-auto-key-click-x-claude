@@ -9,20 +9,25 @@ namespace AutoClickKey.Services;
 
 public class ActionRunnerService
 {
+    private const ushort VKCONTROL = 0x11;
+    private const ushort VKALT = 0x12;
+    private const ushort VKSHIFT = 0x10;
+
     private CancellationTokenSource? _cts;
     private bool _isRunning;
 
-    private const ushort VK_CONTROL = 0x11;
-    private const ushort VK_ALT = 0x12;
-    private const ushort VK_SHIFT = 0x10;
+    public event EventHandler<(int ActionIndex, int LoopCount)>? ActionExecuted;
+
+    public event EventHandler? Stopped;
 
     public bool IsRunning => _isRunning;
-    public event EventHandler<(int ActionIndex, int LoopCount)>? ActionExecuted;
-    public event EventHandler? Stopped;
 
     public async Task RunAsync(IList<ActionItem> actions, bool loop, int loopCount, int delayBetweenLoops)
     {
-        if (_isRunning || actions.Count == 0) return;
+        if (_isRunning || actions.Count == 0)
+        {
+            return;
+        }
 
         _isRunning = true;
         _cts = new CancellationTokenSource();
@@ -36,14 +41,23 @@ public class ActionRunnerService
 
                 for (var i = 0; i < actions.Count; i++)
                 {
-                    if (_cts.Token.IsCancellationRequested) break;
+                    if (_cts.Token.IsCancellationRequested)
+                    {
+                        break;
+                    }
 
                     var action = actions[i];
-                    if (!action.IsEnabled) continue;
+                    if (!action.IsEnabled)
+                    {
+                        continue;
+                    }
 
                     for (var r = 0; r < action.RepeatCount; r++)
                     {
-                        if (_cts.Token.IsCancellationRequested) break;
+                        if (_cts.Token.IsCancellationRequested)
+                        {
+                            break;
+                        }
 
                         await ExecuteActionAsync(action, _cts.Token);
                         ActionExecuted?.Invoke(this, (i, currentLoop));
@@ -83,67 +97,31 @@ public class ActionRunnerService
         }
     }
 
-    private async Task ExecuteActionAsync(ActionItem action, CancellationToken ct)
+    public void Stop()
     {
-        switch (action.Type)
-        {
-            case ActionItemType.Click:
-                ExecuteClick(action);
-                break;
-
-            case ActionItemType.KeyPress:
-                ExecuteKeyPress(action);
-                break;
-
-            case ActionItemType.Delay:
-                await Task.Delay(action.DelayMs, ct);
-                break;
-        }
-    }
-
-    private void ExecuteClick(ActionItem action)
-    {
-        var mouseButton = (MouseButton)action.MouseButton;
-        var isDouble = action.ClickType == 1;
-
-        if (action.UseCurrentPosition)
-        {
-            Win32Api.MouseClick(mouseButton, isDouble);
-        }
-        else
-        {
-            Win32Api.MouseClickAt(action.FixedX, action.FixedY, mouseButton, isDouble);
-        }
-    }
-
-    private void ExecuteKeyPress(ActionItem action)
-    {
-        var keyCode = ParseKeyCode(action.Key);
-        if (keyCode == 0) return;
-
-        // Press modifiers
-        if (action.UseCtrl) Win32Api.KeyDown(VK_CONTROL);
-        if (action.UseAlt) Win32Api.KeyDown(VK_ALT);
-        if (action.UseShift) Win32Api.KeyDown(VK_SHIFT);
-
-        // Press the key
-        Win32Api.KeyPress(keyCode);
-
-        // Release modifiers
-        if (action.UseShift) Win32Api.KeyUp(VK_SHIFT);
-        if (action.UseAlt) Win32Api.KeyUp(VK_ALT);
-        if (action.UseCtrl) Win32Api.KeyUp(VK_CONTROL);
+        _cts?.Cancel();
     }
 
     private static ushort ParseKeyCode(string key)
     {
-        if (string.IsNullOrEmpty(key)) return 0;
+        if (string.IsNullOrEmpty(key))
+        {
+            return 0;
+        }
 
         if (key.Length == 1)
         {
             var c = char.ToUpper(key[0]);
-            if (c >= '0' && c <= '9') return (ushort)(0x30 + (c - '0'));
-            if (c >= 'A' && c <= 'Z') return (ushort)(0x41 + (c - 'A'));
+            if (c >= '0' && c <= '9')
+            {
+                return (ushort)(0x30 + (c - '0'));
+            }
+
+            if (c >= 'A' && c <= 'Z')
+            {
+                return (ushort)(0x41 + (c - 'A'));
+            }
+
             return (ushort)c;
         }
 
@@ -180,8 +158,80 @@ public class ActionRunnerService
         };
     }
 
-    public void Stop()
+    private async Task ExecuteActionAsync(ActionItem action, CancellationToken ct)
     {
-        _cts?.Cancel();
+        switch (action.Type)
+        {
+            case ActionItemType.Click:
+                ExecuteClick(action);
+                break;
+
+            case ActionItemType.KeyPress:
+                ExecuteKeyPress(action);
+                break;
+
+            case ActionItemType.Delay:
+                await Task.Delay(action.DelayMs, ct);
+                break;
+        }
+    }
+
+    private void ExecuteClick(ActionItem action)
+    {
+        var mouseButton = (MouseButton)action.MouseButton;
+        var isDouble = action.ClickType == 1;
+
+        if (action.UseCurrentPosition)
+        {
+            Win32Api.MouseClick(mouseButton, isDouble);
+        }
+        else
+        {
+            Win32Api.MouseClickAt(action.FixedX, action.FixedY, mouseButton, isDouble);
+        }
+    }
+
+    private void ExecuteKeyPress(ActionItem action)
+    {
+        var keyCode = ParseKeyCode(action.Key);
+        if (keyCode == 0)
+        {
+            return;
+        }
+
+        // Press modifiers
+        if (action.UseCtrl)
+        {
+            Win32Api.KeyDown(VKCONTROL);
+        }
+
+        if (action.UseAlt)
+        {
+            Win32Api.KeyDown(VKALT);
+        }
+
+        if (action.UseShift)
+        {
+            Win32Api.KeyDown(VKSHIFT);
+        }
+
+        // Press the key
+        Win32Api.KeyPress(keyCode);
+
+        // Release modifiers
+        if (action.UseShift)
+        {
+            Win32Api.KeyUp(VKSHIFT);
+        }
+
+        if (action.UseAlt)
+        {
+            Win32Api.KeyUp(VKALT);
+        }
+
+        if (action.UseCtrl)
+        {
+            Win32Api.KeyUp(VKCONTROL);
+        }
     }
 }

@@ -11,13 +11,18 @@ public class PositionPickerService : IDisposable
     private bool _isPicking;
     private bool _isDisposed;
 
-    public bool IsPicking => _isPicking;
     public event EventHandler<(int X, int Y)>? PositionPicked;
+
     public event EventHandler? PickingCancelled;
+
+    public bool IsPicking => _isPicking;
 
     public void StartPicking()
     {
-        if (_isPicking) return;
+        if (_isPicking)
+        {
+            return;
+        }
 
         _isPicking = true;
         _proc = HookCallback;
@@ -26,17 +31,31 @@ public class PositionPickerService : IDisposable
 
     public void CancelPicking()
     {
-        if (!_isPicking) return;
+        if (!_isPicking)
+        {
+            return;
+        }
 
         StopHook();
         _isPicking = false;
         PickingCancelled?.Invoke(this, EventArgs.Empty);
     }
 
+    public void Dispose()
+    {
+        if (_isDisposed)
+        {
+            return;
+        }
+
+        StopHook();
+        _isDisposed = true;
+    }
+
     private IntPtr SetHook(Win32Api.LowLevelMouseProc proc)
     {
         var moduleHandle = Win32Api.GetModuleHandle(null!);
-        return Win32Api.SetWindowsHookEx(Win32Api.WH_MOUSE_LL, proc, moduleHandle, 0);
+        return Win32Api.SetWindowsHookEx(Win32Api.WHMOUSELL, proc, moduleHandle, 0);
     }
 
     private void StopHook()
@@ -46,6 +65,7 @@ public class PositionPickerService : IDisposable
             Win32Api.UnhookWindowsHookEx(_hookId);
             _hookId = IntPtr.Zero;
         }
+
         _proc = null;
     }
 
@@ -56,13 +76,13 @@ public class PositionPickerService : IDisposable
             var message = wParam.ToInt32();
 
             // Check for any mouse button down
-            if (message == Win32Api.WM_LBUTTONDOWN ||
-                message == Win32Api.WM_RBUTTONDOWN ||
-                message == Win32Api.WM_MBUTTONDOWN)
+            if (message == Win32Api.WMLBUTTONDOWN ||
+                message == Win32Api.WMRBUTTONDOWN ||
+                message == Win32Api.WMMBUTTONDOWN)
             {
                 var hookStruct = Marshal.PtrToStructure<Win32Api.MSLLHOOKSTRUCT>(lParam);
-                var x = hookStruct.pt.X;
-                var y = hookStruct.pt.Y;
+                var x = hookStruct.Pt.X;
+                var y = hookStruct.Pt.Y;
 
                 // Stop picking
                 StopHook();
@@ -77,13 +97,5 @@ public class PositionPickerService : IDisposable
         }
 
         return Win32Api.CallNextHookEx(_hookId, nCode, wParam, lParam);
-    }
-
-    public void Dispose()
-    {
-        if (_isDisposed) return;
-
-        StopHook();
-        _isDisposed = true;
     }
 }

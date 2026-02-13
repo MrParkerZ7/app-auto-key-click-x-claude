@@ -1,11 +1,15 @@
-﻿
+
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{3FD3C744-2AB2-49ED-97EA-292F70222A61}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{B5A6E2A0-6F7E-4C1D-9F0A-8D3B2E1F4A5C}"
+EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AutoClickKey", "src\AutoClickKey\AutoClickKey.csproj", "{28FA40BC-5BFC-4B4B-B4D6-379AABC38C64}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AutoClickKey.Tests", "tests\AutoClickKey.Tests\AutoClickKey.Tests.csproj", "{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -20,8 +24,13 @@ Global
 		{28FA40BC-5BFC-4B4B-B4D6-379AABC38C64}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{28FA40BC-5BFC-4B4B-B4D6-379AABC38C64}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{28FA40BC-5BFC-4B4B-B4D6-379AABC38C64}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{28FA40BC-5BFC-4B4B-B4D6-379AABC38C64} = {3FD3C744-2AB2-49ED-97EA-292F70222A61}
+		{A1B2C3D4-E5F6-7890-ABCD-EF1234567890} = {B5A6E2A0-6F7E-4C1D-9F0A-8D3B2E1F4A5C}
 	EndGlobalSection
 EndGlobal

@@ -10,14 +10,20 @@ public class InverseBoolConverter : IValueConverter
     public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
     {
         if (value is bool boolValue)
+        {
             return !boolValue;
+        }
+
         return value;
     }
 
     public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
     {
         if (value is bool boolValue)
+        {
             return !boolValue;
+        }
+
         return value;
     }
 }
@@ -27,7 +33,10 @@ public class StartStopTextConverter : IValueConverter
     public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
     {
         if (value is bool isRunning)
+        {
             return isRunning ? "Stop (F4)" : "Start (F4)";
+        }
+
         return "Start (F4)";
     }
 
@@ -42,7 +51,10 @@ public class InverseBoolToVisibilityConverter : IValueConverter
     public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
     {
         if (value is bool boolValue)
+        {
             return boolValue ? Visibility.Collapsed : Visibility.Visible;
+        }
+
         return Visibility.Visible;
     }
 
@@ -57,7 +69,10 @@ public class RecordButtonTextConverter : IValueConverter
     public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
     {
         if (value is bool isRecording)
+        {
             return isRecording ? "Stop Recording" : "Record";
+        }
+
         return "Record";
     }
 
@@ -72,7 +87,10 @@ public class StringToVisibilityConverter : IValueConverter
     public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
     {
         if (value is string str)
+        {
             return string.IsNullOrWhiteSpace(str) ? Visibility.Collapsed : Visibility.Visible;
+        }
+
         return Visibility.Collapsed;
     }
 
@@ -90,6 +108,7 @@ public class IndexToVisibilityConverter : IValueConverter
         {
             return index == targetIndex ? Visibility.Visible : Visibility.Collapsed;
         }
+
         return Visibility.Visible;
     }
 

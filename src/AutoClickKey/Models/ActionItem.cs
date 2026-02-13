@@ -13,8 +13,6 @@ public enum ActionItemType
 
 public class ActionItem : ICloneable, INotifyPropertyChanged
 {
-    public event PropertyChangedEventHandler? PropertyChanged;
-
     private Guid _id = Guid.NewGuid();
     private ActionItemType _type = ActionItemType.Click;
     private bool _isEnabled = true;
@@ -30,6 +28,8 @@ public class ActionItem : ICloneable, INotifyPropertyChanged
     private int _delayMs = 100;
     private int _repeatCount = 1;
     private string _remark = string.Empty;
+
+    public event PropertyChangedEventHandler? PropertyChanged;
 
     public Guid Id
     {
@@ -132,40 +132,6 @@ public class ActionItem : ICloneable, INotifyPropertyChanged
         _ => "Unknown"
     };
 
-    private string GetMouseButtonName() => MouseButton switch
-    {
-        0 => "Left",
-        1 => "Right",
-        2 => "Middle",
-        _ => "Left"
-    };
-
-    private string GetKeyDisplayName()
-    {
-        var modifiers = "";
-        if (UseCtrl) modifiers += "Ctrl+";
-        if (UseAlt) modifiers += "Alt+";
-        if (UseShift) modifiers += "Shift+";
-        return modifiers + Key;
-    }
-
-    protected bool SetProperty<T>(ref T field, T value, string? alsoNotify = null, [CallerMemberName] string? propertyName = null)
-    {
-        if (Equals(field, value)) return false;
-        field = value;
-        OnPropertyChanged(propertyName);
-        if (alsoNotify != null)
-        {
-            OnPropertyChanged(alsoNotify);
-        }
-        return true;
-    }
-
-    protected void OnPropertyChanged([CallerMemberName] string? propertyName = null)
-    {
-        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-    }
-
     public object Clone()
     {
         return new ActionItem
@@ -186,5 +152,56 @@ public class ActionItem : ICloneable, INotifyPropertyChanged
             RepeatCount = RepeatCount,
             Remark = Remark
         };
+    }
+
+    protected bool SetProperty<T>(ref T field, T value, string? alsoNotify = null, [CallerMemberName] string? propertyName = null)
+    {
+        if (Equals(field, value))
+        {
+            return false;
+        }
+
+        field = value;
+        OnPropertyChanged(propertyName);
+        if (alsoNotify != null)
+        {
+            OnPropertyChanged(alsoNotify);
+        }
+
+        return true;
+    }
+
+    protected void OnPropertyChanged([CallerMemberName] string? propertyName = null)
+    {
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+    }
+
+    private string GetMouseButtonName() => MouseButton switch
+    {
+        0 => "Left",
+        1 => "Right",
+        2 => "Middle",
+        _ => "Left"
+    };
+
+    private string GetKeyDisplayName()
+    {
+        var modifiers = string.Empty;
+        if (UseCtrl)
+        {
+            modifiers += "Ctrl+";
+        }
+
+        if (UseAlt)
+        {
+            modifiers += "Alt+";
+        }
+
+        if (UseShift)
+        {
+            modifiers += "Shift+";
+        }
+
+        return modifiers + Key;
     }
 }

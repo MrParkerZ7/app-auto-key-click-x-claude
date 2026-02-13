@@ -8,21 +8,26 @@ namespace AutoClickKey.Services;
 
 public class KeyboardService
 {
+    // Virtual key codes for modifier keys
+    private const ushort VKCONTROL = 0x11;
+    private const ushort VKALT = 0x12;
+    private const ushort VKSHIFT = 0x10;
+
     private CancellationTokenSource? _cts;
     private bool _isRunning;
 
-    // Virtual key codes for modifier keys
-    private const ushort VK_CONTROL = 0x11;
-    private const ushort VK_ALT = 0x12;
-    private const ushort VK_SHIFT = 0x10;
+    public event EventHandler<int>? KeyPressed;
+
+    public event EventHandler? Stopped;
 
     public bool IsRunning => _isRunning;
-    public event EventHandler<int>? KeyPressed;
-    public event EventHandler? Stopped;
 
     public async Task StartAsync(KeyboardSettings settings)
     {
-        if (_isRunning) return;
+        if (_isRunning)
+        {
+            return;
+        }
 
         _isRunning = true;
         _cts = new CancellationTokenSource();
@@ -67,25 +72,33 @@ public class KeyboardService
         }
     }
 
+    public void Stop()
+    {
+        _cts?.Cancel();
+    }
+
     private async Task TypeTextAsync(string text, int intervalMs, CancellationToken ct)
     {
         foreach (var c in text)
         {
-            if (ct.IsCancellationRequested) break;
+            if (ct.IsCancellationRequested)
+            {
+                break;
+            }
 
             var keyCode = (ushort)char.ToUpper(c);
 
             // Handle shift for uppercase letters
             if (char.IsUpper(c))
             {
-                Win32Api.KeyDown(VK_SHIFT);
+                Win32Api.KeyDown(VKSHIFT);
             }
 
             Win32Api.KeyPress(keyCode);
 
             if (char.IsUpper(c))
             {
-                Win32Api.KeyUp(VK_SHIFT);
+                Win32Api.KeyUp(VKSHIFT);
             }
 
             await Task.Delay(intervalMs, ct);
@@ -95,21 +108,38 @@ public class KeyboardService
     private void PressKeyWithModifiers(KeyboardSettings settings)
     {
         // Press modifiers
-        if (settings.UseCtrl) Win32Api.KeyDown(VK_CONTROL);
-        if (settings.UseAlt) Win32Api.KeyDown(VK_ALT);
-        if (settings.UseShift) Win32Api.KeyDown(VK_SHIFT);
+        if (settings.UseCtrl)
+        {
+            Win32Api.KeyDown(VKCONTROL);
+        }
+
+        if (settings.UseAlt)
+        {
+            Win32Api.KeyDown(VKALT);
+        }
+
+        if (settings.UseShift)
+        {
+            Win32Api.KeyDown(VKSHIFT);
+        }
 
         // Press the key
         Win32Api.KeyPress(settings.KeyCode);
 
         // Release modifiers
-        if (settings.UseShift) Win32Api.KeyUp(VK_SHIFT);
-        if (settings.UseAlt) Win32Api.KeyUp(VK_ALT);
-        if (settings.UseCtrl) Win32Api.KeyUp(VK_CONTROL);
-    }
+        if (settings.UseShift)
+        {
+            Win32Api.KeyUp(VKSHIFT);
+        }
 
-    public void Stop()
-    {
-        _cts?.Cancel();
+        if (settings.UseAlt)
+        {
+            Win32Api.KeyUp(VKALT);
+        }
+
+        if (settings.UseCtrl)
+        {
+            Win32Api.KeyUp(VKCONTROL);
+        }
     }
 }

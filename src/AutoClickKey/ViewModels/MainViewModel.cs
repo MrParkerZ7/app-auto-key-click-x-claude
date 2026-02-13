@@ -18,9 +18,23 @@ public class MainViewModel : ViewModelBase, IDisposable
     private readonly PositionPickerService _positionPicker;
     private readonly SettingsService _settingsService;
     private readonly DispatcherTimer _saveDebounceTimer;
+
     private Window? _mainWindow;
-    private bool _isLoading; // Prevent auto-save during load
-    private string? _originalProfileName; // Track loaded profile name for rename
+    private bool _isLoading;
+    private string? _originalProfileName;
+    private ActionItem? _selectedAction;
+    private string _currentProfileName = string.Empty;
+    private string? _selectedProfileName;
+    private bool _loopActions = true;
+    private int _loopCount = 10;
+    private int _delayBetweenLoops;
+    private bool _isRunning;
+    private int _currentActionIndex;
+    private int _currentLoopCount;
+    private string _statusText = "Ready - Press F4 to Start";
+    private bool _isPickingPosition;
+    private string _selectedHotkey = "F4";
+    private int _toggleHotkeyId;
 
     public MainViewModel()
     {
@@ -79,6 +93,242 @@ public class MainViewModel : ViewModelBase, IDisposable
         LoadSettings();
     }
 
+    public ObservableCollection<ActionItem> Actions { get; }
+
+    public ObservableCollection<string> ProfileNames { get; }
+
+    public ActionItem? SelectedAction
+    {
+        get => _selectedAction;
+        set
+        {
+            if (SetProperty(ref _selectedAction, value))
+            {
+                OnPropertyChanged(nameof(HasSelectedAction));
+                OnPropertyChanged(nameof(IsClickAction));
+                OnPropertyChanged(nameof(IsKeyAction));
+                OnPropertyChanged(nameof(IsDelayAction));
+                (RemoveActionCommand as RelayCommand)?.RaiseCanExecuteChanged();
+                (MoveUpCommand as RelayCommand)?.RaiseCanExecuteChanged();
+                (MoveDownCommand as RelayCommand)?.RaiseCanExecuteChanged();
+                (DuplicateCommand as RelayCommand)?.RaiseCanExecuteChanged();
+            }
+        }
+    }
+
+    public bool HasSelectedAction => SelectedAction != null;
+
+    public bool IsClickAction => SelectedAction?.Type == ActionItemType.Click;
+
+    public bool IsKeyAction => SelectedAction?.Type == ActionItemType.KeyPress;
+
+    public bool IsDelayAction => SelectedAction?.Type == ActionItemType.Delay;
+
+    public string CurrentProfileName
+    {
+        get => _currentProfileName;
+        set
+        {
+            if (SetProperty(ref _currentProfileName, value))
+            {
+                AutoSave();
+            }
+        }
+    }
+
+    public string? SelectedProfileName
+    {
+        get => _selectedProfileName;
+        set
+        {
+            if (SetProperty(ref _selectedProfileName, value))
+            {
+                (DeleteProfileCommand as RelayCommand)?.RaiseCanExecuteChanged();
+                if (!string.IsNullOrEmpty(value))
+                {
+                    LoadProfile(value);
+                }
+            }
+        }
+    }
+
+    public bool LoopActions
+    {
+        get => _loopActions;
+        set
+        {
+            if (SetProperty(ref _loopActions, value))
+            {
+                AutoSave();
+            }
+        }
+    }
+
+    public int LoopCount
+    {
+        get => _loopCount;
+        set
+        {
+            if (SetProperty(ref _loopCount, Math.Max(0, value)))
+            {
+                AutoSave();
+            }
+        }
+    }
+
+    public int DelayBetweenLoops
+    {
+        get => _delayBetweenLoops;
+        set
+        {
+            if (SetProperty(ref _delayBetweenLoops, Math.Max(0, value)))
+            {
+                AutoSave();
+            }
+        }
+    }
+
+    public bool IsRunning
+    {
+        get => _isRunning;
+        set
+        {
+            if (SetProperty(ref _isRunning, value))
+            {
+                UpdateStatusText();
+                OnPropertyChanged(nameof(ToggleButtonText));
+            }
+        }
+    }
+
+    public string ToggleButtonText => IsRunning ? $"Stop ({SelectedHotkey})" : $"Start ({SelectedHotkey})";
+
+    public int CurrentActionIndex
+    {
+        get => _currentActionIndex;
+        set => SetProperty(ref _currentActionIndex, value);
+    }
+
+    public int CurrentLoopCount
+    {
+        get => _currentLoopCount;
+        set => SetProperty(ref _currentLoopCount, value);
+    }
+
+    public string StatusText
+    {
+        get => _statusText;
+        set => SetProperty(ref _statusText, value);
+    }
+
+    public bool IsPickingPosition
+    {
+        get => _isPickingPosition;
+        set
+        {
+            if (SetProperty(ref _isPickingPosition, value))
+            {
+                UpdateStatusText();
+            }
+        }
+    }
+
+    public string SelectedHotkey
+    {
+        get => _selectedHotkey;
+        set
+        {
+            if (SetProperty(ref _selectedHotkey, value))
+            {
+                RegisterToggleHotkey();
+                UpdateStatusText();
+                OnPropertyChanged(nameof(ToggleButtonText));
+            }
+        }
+    }
+
+    public string[] AvailableHotkeys { get; } =
+    [
+        "F1", "F2", "F3", "F4", "F5", "F6", "F7", "F9", "F10", "F11", "F12"
+    ];
+
+    public ICommand ToggleCommand { get; }
+
+    public ICommand AddClickCommand { get; }
+
+    public ICommand AddKeyCommand { get; }
+
+    public ICommand AddDelayCommand { get; }
+
+    public ICommand RemoveActionCommand { get; }
+
+    public ICommand MoveUpCommand { get; }
+
+    public ICommand MoveDownCommand { get; }
+
+    public ICommand DuplicateCommand { get; }
+
+    public ICommand ClearAllCommand { get; }
+
+    public ICommand DeleteProfileCommand { get; }
+
+    public ICommand NewProfileCommand { get; }
+
+    public ICommand PickPositionCommand { get; }
+
+    public void InitializeHotkeys(Window window)
+    {
+        _mainWindow = window;
+        _hotkeyService.Initialize(window);
+
+        // Register toggle hotkey
+        RegisterToggleHotkey();
+
+        // Escape - Cancel picking
+        _hotkeyService.RegisterHotkey(Win32Api.MODNONE, 0x1B, CancelPicking);
+    }
+
+    public void SaveSettings()
+    {
+        // Flush any pending auto-save
+        if (_saveDebounceTimer.IsEnabled)
+        {
+            _saveDebounceTimer.Stop();
+            PerformAutoSave();
+        }
+
+        var settings = new AppSettings
+        {
+            LastProfileName = string.IsNullOrWhiteSpace(CurrentProfileName) ? null : CurrentProfileName,
+            LastHotkey = SelectedHotkey
+        };
+        _settingsService.Save(settings);
+    }
+
+    public void Dispose()
+    {
+        _saveDebounceTimer.Stop();
+        _hotkeyService.Dispose();
+        _positionPicker.Dispose();
+    }
+
+    private static int GetKeyCode(string key) => key switch
+    {
+        "F1" => 0x70,
+        "F2" => 0x71,
+        "F3" => 0x72,
+        "F4" => 0x73,
+        "F5" => 0x74,
+        "F6" => 0x75,
+        "F7" => 0x76,
+        "F8" => 0x77,
+        "F9" => 0x78,
+        "F10" => 0x79,
+        "F11" => 0x7A,
+        "F12" => 0x7B,
+        _ => 0x73
+    };
+
     private void LoadSettings()
     {
         var settings = _settingsService.Load();
@@ -103,209 +353,12 @@ public class MainViewModel : ViewModelBase, IDisposable
         }
     }
 
-    public void SaveSettings()
-    {
-        // Flush any pending auto-save
-        if (_saveDebounceTimer.IsEnabled)
-        {
-            _saveDebounceTimer.Stop();
-            PerformAutoSave();
-        }
-
-        var settings = new AppSettings
-        {
-            LastProfileName = string.IsNullOrWhiteSpace(CurrentProfileName) ? null : CurrentProfileName,
-            LastHotkey = SelectedHotkey
-        };
-        _settingsService.Save(settings);
-    }
-
-    #region Properties
-
-    public ObservableCollection<ActionItem> Actions { get; }
-    public ObservableCollection<string> ProfileNames { get; }
-
-    private ActionItem? _selectedAction;
-    public ActionItem? SelectedAction
-    {
-        get => _selectedAction;
-        set
-        {
-            if (SetProperty(ref _selectedAction, value))
-            {
-                OnPropertyChanged(nameof(HasSelectedAction));
-                OnPropertyChanged(nameof(IsClickAction));
-                OnPropertyChanged(nameof(IsKeyAction));
-                OnPropertyChanged(nameof(IsDelayAction));
-                (RemoveActionCommand as RelayCommand)?.RaiseCanExecuteChanged();
-                (MoveUpCommand as RelayCommand)?.RaiseCanExecuteChanged();
-                (MoveDownCommand as RelayCommand)?.RaiseCanExecuteChanged();
-                (DuplicateCommand as RelayCommand)?.RaiseCanExecuteChanged();
-            }
-        }
-    }
-
-    public bool HasSelectedAction => SelectedAction != null;
-    public bool IsClickAction => SelectedAction?.Type == ActionItemType.Click;
-    public bool IsKeyAction => SelectedAction?.Type == ActionItemType.KeyPress;
-    public bool IsDelayAction => SelectedAction?.Type == ActionItemType.Delay;
-
-    private string _currentProfileName = "";
-    public string CurrentProfileName
-    {
-        get => _currentProfileName;
-        set
-        {
-            if (SetProperty(ref _currentProfileName, value))
-            {
-                AutoSave();
-            }
-        }
-    }
-
-    private string? _selectedProfileName;
-    public string? SelectedProfileName
-    {
-        get => _selectedProfileName;
-        set
-        {
-            if (SetProperty(ref _selectedProfileName, value))
-            {
-                (DeleteProfileCommand as RelayCommand)?.RaiseCanExecuteChanged();
-                if (!string.IsNullOrEmpty(value))
-                {
-                    LoadProfile(value);
-                }
-            }
-        }
-    }
-
-    private bool _loopActions = true;
-    public bool LoopActions
-    {
-        get => _loopActions;
-        set { if (SetProperty(ref _loopActions, value)) AutoSave(); }
-    }
-
-    private int _loopCount = 10;
-    public int LoopCount
-    {
-        get => _loopCount;
-        set { if (SetProperty(ref _loopCount, Math.Max(0, value))) AutoSave(); }
-    }
-
-    private int _delayBetweenLoops;
-    public int DelayBetweenLoops
-    {
-        get => _delayBetweenLoops;
-        set { if (SetProperty(ref _delayBetweenLoops, Math.Max(0, value))) AutoSave(); }
-    }
-
-    private bool _isRunning;
-    public bool IsRunning
-    {
-        get => _isRunning;
-        set
-        {
-            if (SetProperty(ref _isRunning, value))
-            {
-                UpdateStatusText();
-                OnPropertyChanged(nameof(ToggleButtonText));
-            }
-        }
-    }
-
-    public string ToggleButtonText => IsRunning ? $"Stop ({SelectedHotkey})" : $"Start ({SelectedHotkey})";
-
-    private int _currentActionIndex;
-    public int CurrentActionIndex
-    {
-        get => _currentActionIndex;
-        set => SetProperty(ref _currentActionIndex, value);
-    }
-
-    private int _currentLoopCount;
-    public int CurrentLoopCount
-    {
-        get => _currentLoopCount;
-        set => SetProperty(ref _currentLoopCount, value);
-    }
-
-    private string _statusText = "Ready - Press F4 to Start";
-    public string StatusText
-    {
-        get => _statusText;
-        set => SetProperty(ref _statusText, value);
-    }
-
-    private bool _isPickingPosition;
-    public bool IsPickingPosition
-    {
-        get => _isPickingPosition;
-        set
-        {
-            if (SetProperty(ref _isPickingPosition, value))
-            {
-                UpdateStatusText();
-            }
-        }
-    }
-
-    private string _selectedHotkey = "F4";
-    public string SelectedHotkey
-    {
-        get => _selectedHotkey;
-        set
-        {
-            if (SetProperty(ref _selectedHotkey, value))
-            {
-                RegisterToggleHotkey();
-                UpdateStatusText();
-                OnPropertyChanged(nameof(ToggleButtonText));
-            }
-        }
-    }
-
-    public string[] AvailableHotkeys { get; } = ["F1", "F2", "F3", "F4", "F5", "F6", "F7", "F9", "F10", "F11", "F12"];
-
-    #endregion
-
-    #region Commands
-
-    public ICommand ToggleCommand { get; }
-    public ICommand AddClickCommand { get; }
-    public ICommand AddKeyCommand { get; }
-    public ICommand AddDelayCommand { get; }
-    public ICommand RemoveActionCommand { get; }
-    public ICommand MoveUpCommand { get; }
-    public ICommand MoveDownCommand { get; }
-    public ICommand DuplicateCommand { get; }
-    public ICommand ClearAllCommand { get; }
-    public ICommand DeleteProfileCommand { get; }
-    public ICommand NewProfileCommand { get; }
-    public ICommand PickPositionCommand { get; }
-
-    #endregion
-
-    #region Hotkey Setup
-
-    private int _toggleHotkeyId;
-
-    public void InitializeHotkeys(Window window)
-    {
-        _mainWindow = window;
-        _hotkeyService.Initialize(window);
-
-        // Register toggle hotkey
-        RegisterToggleHotkey();
-
-        // Escape - Cancel picking
-        _hotkeyService.RegisterHotkey(Win32Api.MOD_NONE, 0x1B, CancelPicking);
-    }
-
     private void RegisterToggleHotkey()
     {
-        if (_mainWindow == null) return;
+        if (_mainWindow == null)
+        {
+            return;
+        }
 
         // Unregister previous hotkey
         if (_toggleHotkeyId > 0)
@@ -315,25 +368,8 @@ public class MainViewModel : ViewModelBase, IDisposable
 
         // Register new hotkey
         var keyCode = GetKeyCode(SelectedHotkey);
-        _toggleHotkeyId = _hotkeyService.RegisterHotkey(Win32Api.MOD_NONE, keyCode, Toggle);
+        _toggleHotkeyId = _hotkeyService.RegisterHotkey(Win32Api.MODNONE, keyCode, Toggle);
     }
-
-    private static int GetKeyCode(string key) => key switch
-    {
-        "F1" => 0x70,
-        "F2" => 0x71,
-        "F3" => 0x72,
-        "F4" => 0x73,
-        "F5" => 0x74,
-        "F6" => 0x75,
-        "F7" => 0x76,
-        "F8" => 0x77,
-        "F9" => 0x78,
-        "F10" => 0x79,
-        "F11" => 0x7A,
-        "F12" => 0x7B,
-        _ => 0x73 // Default to F4
-    };
 
     private void CancelPicking()
     {
@@ -342,10 +378,6 @@ public class MainViewModel : ViewModelBase, IDisposable
             _positionPicker.CancelPicking();
         }
     }
-
-    #endregion
-
-    #region Action Methods
 
     private void AddClickAction()
     {
@@ -388,7 +420,10 @@ public class MainViewModel : ViewModelBase, IDisposable
 
     private void RemoveSelectedAction()
     {
-        if (SelectedAction == null) return;
+        if (SelectedAction == null)
+        {
+            return;
+        }
 
         var index = Actions.IndexOf(SelectedAction);
         Actions.Remove(SelectedAction);
@@ -401,38 +436,50 @@ public class MainViewModel : ViewModelBase, IDisposable
         {
             SelectedAction = null;
         }
+
         (ClearAllCommand as RelayCommand)?.RaiseCanExecuteChanged();
     }
 
     private void MoveActionUp()
     {
-        if (SelectedAction == null) return;
+        if (SelectedAction == null)
+        {
+            return;
+        }
 
         var index = Actions.IndexOf(SelectedAction);
         if (index > 0)
         {
             Actions.Move(index, index - 1);
         }
+
         (MoveUpCommand as RelayCommand)?.RaiseCanExecuteChanged();
         (MoveDownCommand as RelayCommand)?.RaiseCanExecuteChanged();
     }
 
     private void MoveActionDown()
     {
-        if (SelectedAction == null) return;
+        if (SelectedAction == null)
+        {
+            return;
+        }
 
         var index = Actions.IndexOf(SelectedAction);
         if (index < Actions.Count - 1)
         {
             Actions.Move(index, index + 1);
         }
+
         (MoveUpCommand as RelayCommand)?.RaiseCanExecuteChanged();
         (MoveDownCommand as RelayCommand)?.RaiseCanExecuteChanged();
     }
 
     private void DuplicateAction()
     {
-        if (SelectedAction == null) return;
+        if (SelectedAction == null)
+        {
+            return;
+        }
 
         var clone = (ActionItem)SelectedAction.Clone();
         var index = Actions.IndexOf(SelectedAction);
@@ -449,8 +496,15 @@ public class MainViewModel : ViewModelBase, IDisposable
 
     private void PickPosition()
     {
-        if (SelectedAction == null || SelectedAction.Type != ActionItemType.Click) return;
-        if (IsPickingPosition) return;
+        if (SelectedAction == null || SelectedAction.Type != ActionItemType.Click)
+        {
+            return;
+        }
+
+        if (IsPickingPosition)
+        {
+            return;
+        }
 
         IsPickingPosition = true;
 
@@ -495,10 +549,6 @@ public class MainViewModel : ViewModelBase, IDisposable
         }
     }
 
-    #endregion
-
-    #region Run Methods
-
     private void Toggle()
     {
         if (IsRunning)
@@ -513,7 +563,10 @@ public class MainViewModel : ViewModelBase, IDisposable
 
     private void Start()
     {
-        if (Actions.Count == 0) return;
+        if (Actions.Count == 0)
+        {
+            return;
+        }
 
         IsRunning = true;
         CurrentActionIndex = 0;
@@ -545,10 +598,6 @@ public class MainViewModel : ViewModelBase, IDisposable
         }
     }
 
-    #endregion
-
-    #region Profile Methods
-
     private void RefreshProfileList()
     {
         var currentSelection = _selectedProfileName;
@@ -557,6 +606,7 @@ public class MainViewModel : ViewModelBase, IDisposable
         {
             ProfileNames.Add(name);
         }
+
         // Restore selection without triggering load
         _selectedProfileName = currentSelection;
         OnPropertyChanged(nameof(SelectedProfileName));
@@ -564,7 +614,10 @@ public class MainViewModel : ViewModelBase, IDisposable
 
     private void AutoSave()
     {
-        if (_isLoading) return;
+        if (_isLoading)
+        {
+            return;
+        }
 
         // Reset and start debounce timer
         _saveDebounceTimer.Stop();
@@ -573,8 +626,15 @@ public class MainViewModel : ViewModelBase, IDisposable
 
     private void PerformAutoSave()
     {
-        if (_isLoading) return;
-        if (string.IsNullOrWhiteSpace(CurrentProfileName)) return;
+        if (_isLoading)
+        {
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(CurrentProfileName))
+        {
+            return;
+        }
 
         // If renaming an existing profile, delete the old one first
         if (!string.IsNullOrEmpty(_originalProfileName) &&
@@ -595,7 +655,7 @@ public class MainViewModel : ViewModelBase, IDisposable
         };
 
         _profileService.SaveProfile(profile);
-        _originalProfileName = CurrentProfileName; // Update original name after save
+        _originalProfileName = CurrentProfileName;
         RefreshProfileList();
 
         // Update selected profile to match current
@@ -609,7 +669,10 @@ public class MainViewModel : ViewModelBase, IDisposable
     private void LoadProfile(string name)
     {
         var profile = _profileService.LoadProfile(name);
-        if (profile == null) return;
+        if (profile == null)
+        {
+            return;
+        }
 
         _isLoading = true;
         try
@@ -621,7 +684,7 @@ public class MainViewModel : ViewModelBase, IDisposable
             }
 
             _currentProfileName = profile.Name;
-            _originalProfileName = profile.Name; // Track for rename
+            _originalProfileName = profile.Name;
             OnPropertyChanged(nameof(CurrentProfileName));
             _loopActions = profile.LoopActions;
             OnPropertyChanged(nameof(LoopActions));
@@ -643,7 +706,10 @@ public class MainViewModel : ViewModelBase, IDisposable
 
     private void DeleteSelectedProfile()
     {
-        if (string.IsNullOrEmpty(SelectedProfileName)) return;
+        if (string.IsNullOrEmpty(SelectedProfileName))
+        {
+            return;
+        }
 
         _profileService.DeleteProfile(SelectedProfileName);
         RefreshProfileList();
@@ -653,7 +719,7 @@ public class MainViewModel : ViewModelBase, IDisposable
         {
             _selectedProfileName = null;
             OnPropertyChanged(nameof(SelectedProfileName));
-            _currentProfileName = "";
+            _currentProfileName = string.Empty;
             _originalProfileName = null;
             OnPropertyChanged(nameof(CurrentProfileName));
         }
@@ -669,8 +735,8 @@ public class MainViewModel : ViewModelBase, IDisposable
         try
         {
             Actions.Clear();
-            _currentProfileName = "";
-            _originalProfileName = null; // New profile, no original
+            _currentProfileName = string.Empty;
+            _originalProfileName = null;
             OnPropertyChanged(nameof(CurrentProfileName));
             _loopActions = true;
             OnPropertyChanged(nameof(LoopActions));
@@ -687,14 +753,5 @@ public class MainViewModel : ViewModelBase, IDisposable
         {
             _isLoading = false;
         }
-    }
-
-    #endregion
-
-    public void Dispose()
-    {
-        _saveDebounceTimer.Stop();
-        _hotkeyService.Dispose();
-        _positionPicker.Dispose();
     }
 }

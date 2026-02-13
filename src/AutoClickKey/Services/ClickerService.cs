@@ -11,13 +11,18 @@ public class ClickerService
     private CancellationTokenSource? _cts;
     private bool _isRunning;
 
-    public bool IsRunning => _isRunning;
     public event EventHandler<int>? ClickPerformed;
+
     public event EventHandler? Stopped;
+
+    public bool IsRunning => _isRunning;
 
     public async Task StartAsync(ClickerSettings settings)
     {
-        if (_isRunning) return;
+        if (_isRunning)
+        {
+            return;
+        }
 
         _isRunning = true;
         _cts = new CancellationTokenSource();
