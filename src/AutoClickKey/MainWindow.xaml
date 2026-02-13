@@ -6,7 +6,7 @@
         xmlns:vm="clr-namespace:AutoClickKey.ViewModels"
         mc:Ignorable="d"
         Title="AutoClickKey"
-        Icon="Assets/app-icon-v1.png"
+        Icon="Assets/app-icon.ico"
         Height="750"
         Width="900"
         MinHeight="650"
