@@ -47,7 +47,6 @@ public class MainViewModel : ViewModelBase, IDisposable
 
         // Setup commands
         ToggleCommand = new RelayCommand(Toggle);
-        StopCommand = new RelayCommand(Stop);
         AddClickCommand = new RelayCommand(AddClickAction);
         AddKeyCommand = new RelayCommand(AddKeyAction);
         AddDelayCommand = new RelayCommand(AddDelayAction);
@@ -154,9 +153,12 @@ public class MainViewModel : ViewModelBase, IDisposable
             if (SetProperty(ref _isRunning, value))
             {
                 UpdateStatusText();
+                OnPropertyChanged(nameof(ToggleButtonText));
             }
         }
     }
+
+    public string ToggleButtonText => IsRunning ? $"Stop ({SelectedHotkey})" : $"Start ({SelectedHotkey})";
 
     private int _currentActionIndex;
     public int CurrentActionIndex
@@ -192,12 +194,28 @@ public class MainViewModel : ViewModelBase, IDisposable
         }
     }
 
+    private string _selectedHotkey = "F4";
+    public string SelectedHotkey
+    {
+        get => _selectedHotkey;
+        set
+        {
+            if (SetProperty(ref _selectedHotkey, value))
+            {
+                RegisterToggleHotkey();
+                UpdateStatusText();
+                OnPropertyChanged(nameof(ToggleButtonText));
+            }
+        }
+    }
+
+    public string[] AvailableHotkeys { get; } = ["F1", "F2", "F3", "F4", "F5", "F6", "F7", "F9", "F10", "F11", "F12"];
+
     #endregion
 
     #region Commands
 
     public ICommand ToggleCommand { get; }
-    public ICommand StopCommand { get; }
     public ICommand AddClickCommand { get; }
     public ICommand AddKeyCommand { get; }
     public ICommand AddDelayCommand { get; }
@@ -214,20 +232,51 @@ public class MainViewModel : ViewModelBase, IDisposable
 
     #region Hotkey Setup
 
+    private int _toggleHotkeyId;
+
     public void InitializeHotkeys(Window window)
     {
         _mainWindow = window;
         _hotkeyService.Initialize(window);
 
-        // F4 - Start/Stop
-        _hotkeyService.RegisterHotkey(Win32Api.MOD_NONE, 0x73, Toggle);
-
-        // F8 - Emergency Stop
-        _hotkeyService.RegisterHotkey(Win32Api.MOD_NONE, 0x77, Stop);
+        // Register toggle hotkey
+        RegisterToggleHotkey();
 
         // Escape - Cancel picking
         _hotkeyService.RegisterHotkey(Win32Api.MOD_NONE, 0x1B, CancelPicking);
     }
+
+    private void RegisterToggleHotkey()
+    {
+        if (_mainWindow == null) return;
+
+        // Unregister previous hotkey
+        if (_toggleHotkeyId > 0)
+        {
+            _hotkeyService.UnregisterHotkey(_toggleHotkeyId);
+        }
+
+        // Register new hotkey
+        var keyCode = GetKeyCode(SelectedHotkey);
+        _toggleHotkeyId = _hotkeyService.RegisterHotkey(Win32Api.MOD_NONE, keyCode, Toggle);
+    }
+
+    private static int GetKeyCode(string key) => key switch
+    {
+        "F1" => 0x70,
+        "F2" => 0x71,
+        "F3" => 0x72,
+        "F4" => 0x73,
+        "F5" => 0x74,
+        "F6" => 0x75,
+        "F7" => 0x76,
+        "F8" => 0x77,
+        "F9" => 0x78,
+        "F10" => 0x79,
+        "F11" => 0x7A,
+        "F12" => 0x7B,
+        _ => 0x73 // Default to F4
+    };
 
     private void CancelPicking()
     {
@@ -431,11 +480,11 @@ public class MainViewModel : ViewModelBase, IDisposable
         }
         else if (IsRunning)
         {
-            StatusText = $"Running... Loop {CurrentLoopCount} - Press F4 to Stop";
+            StatusText = $"Running... Loop {CurrentLoopCount} - Press {SelectedHotkey} to Stop";
         }
         else
         {
-            StatusText = "Ready - Press F4 to Start";
+            StatusText = $"Ready - Press {SelectedHotkey} to Start";
         }
     }
 

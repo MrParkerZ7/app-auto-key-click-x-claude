@@ -7,9 +7,9 @@
         mc:Ignorable="d"
         Title="AutoClickKey"
         Icon="Assets/app-icon-v1.png"
-        Height="600"
+        Height="850"
         Width="900"
-        MinHeight="500"
+        MinHeight="700"
         MinWidth="750"
         WindowStartupLocation="CenterScreen"
         Loaded="Window_Loaded"
@@ -377,15 +377,18 @@
                 <TextBlock Grid.Column="0" Text="{Binding StatusText}"
                            VerticalAlignment="Center" FontWeight="SemiBold"/>
 
-                <Button Grid.Column="1"
-                        Content="{Binding IsRunning, Converter={StaticResource StartStopTextConverter}}"
-                        Padding="20,10" Margin="0,0,8,0"
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="0,0,8,0">
+                    <TextBlock Text="Hotkey:" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                    <ComboBox ItemsSource="{Binding AvailableHotkeys}"
+                              SelectedItem="{Binding SelectedHotkey}"
+                              Width="70" VerticalAlignment="Center"/>
+                </StackPanel>
+
+                <Button Grid.Column="2"
+                        Content="{Binding ToggleButtonText}"
+                        Padding="20,10"
                         FontWeight="Bold" FontSize="14"
                         Command="{Binding ToggleCommand}"/>
-                <Button Grid.Column="2"
-                        Content="Stop (F8)"
-                        Padding="20,10"
-                        Command="{Binding StopCommand}"/>
             </Grid>
         </Border>
     </Grid>
