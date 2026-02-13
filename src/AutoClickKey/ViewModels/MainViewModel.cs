@@ -249,7 +249,17 @@ public class MainViewModel : ViewModelBase, IDisposable
 
     public string[] AvailableHotkeys { get; } =
     [
-        "F1", "F2", "F3", "F4", "F5", "F6", "F7", "F9", "F10", "F11", "F12"
+        "F1",
+        "F2",
+        "F3",
+        "F4",
+        "F5",
+        "F6",
+        "F7",
+        "F9",
+        "F10",
+        "F11",
+        "F12"
     ];
 
     public ICommand ToggleCommand { get; }

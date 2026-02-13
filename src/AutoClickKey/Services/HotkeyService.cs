@@ -9,7 +9,7 @@ namespace AutoClickKey.Services;
 
 public class HotkeyService : IDisposable
 {
-    private readonly Dictionary<int, Action> _hotkeyActions = new ();
+    private readonly Dictionary<int, Action> _hotkeyActions = new();
 
     private IntPtr _windowHandle;
     private HwndSource? _source;

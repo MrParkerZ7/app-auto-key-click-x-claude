@@ -74,3 +74,6 @@ dotnet_diagnostic.SA0001.severity = none
 
 # SA1115: Parameter should begin on line after previous - too strict for generated code
 dotnet_diagnostic.SA1115.severity = none
+
+# SA1000: Keywords should be spaced correctly - conflicts with modern C# new() style
+dotnet_diagnostic.SA1000.severity = none

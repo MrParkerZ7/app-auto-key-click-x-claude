@@ -8,7 +8,7 @@ namespace AutoClickKey.Tests.Helpers;
 
 public class InverseBoolConverterTests
 {
-    private readonly InverseBoolConverter _converter = new ();
+    private readonly InverseBoolConverter _converter = new();
 
     [Theory]
     [InlineData(true, false)]
@@ -45,7 +45,7 @@ public class InverseBoolConverterTests
 
 public class StartStopTextConverterTests
 {
-    private readonly StartStopTextConverter _converter = new ();
+    private readonly StartStopTextConverter _converter = new();
 
     [Fact]
     public void Convert_ReturnsStop_WhenRunning()
@@ -78,7 +78,7 @@ public class StartStopTextConverterTests
 
 public class InverseBoolToVisibilityConverterTests
 {
-    private readonly InverseBoolToVisibilityConverter _converter = new ();
+    private readonly InverseBoolToVisibilityConverter _converter = new();
 
     [Fact]
     public void Convert_ReturnsCollapsed_WhenTrue()
@@ -111,7 +111,7 @@ public class InverseBoolToVisibilityConverterTests
 
 public class RecordButtonTextConverterTests
 {
-    private readonly RecordButtonTextConverter _converter = new ();
+    private readonly RecordButtonTextConverter _converter = new();
 
     [Fact]
     public void Convert_ReturnsStopRecording_WhenRecording()
@@ -144,7 +144,7 @@ public class RecordButtonTextConverterTests
 
 public class StringToVisibilityConverterTests
 {
-    private readonly StringToVisibilityConverter _converter = new ();
+    private readonly StringToVisibilityConverter _converter = new();
 
     [Fact]
     public void Convert_ReturnsVisible_WhenStringHasContent()
@@ -180,7 +180,7 @@ public class StringToVisibilityConverterTests
 
 public class IndexToVisibilityConverterTests
 {
-    private readonly IndexToVisibilityConverter _converter = new ();
+    private readonly IndexToVisibilityConverter _converter = new();
 
     [Fact]
     public void Convert_ReturnsVisible_WhenIndexMatchesParameter()

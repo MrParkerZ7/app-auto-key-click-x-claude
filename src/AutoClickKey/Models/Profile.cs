@@ -11,7 +11,7 @@ public class Profile
 
     public DateTime ModifiedAt { get; set; } = DateTime.Now;
 
-    public List<ActionItem> Actions { get; set; } = new ();
+    public List<ActionItem> Actions { get; set; } = new();
 
     public bool LoopActions { get; set; } = true;
 
@@ -20,13 +20,13 @@ public class Profile
     public int DelayBetweenLoops { get; set; } = 0;
 
     // Legacy support
-    public ClickerSettings ClickerSettings { get; set; } = new ();
+    public ClickerSettings ClickerSettings { get; set; } = new();
 
-    public KeyboardSettings KeyboardSettings { get; set; } = new ();
+    public KeyboardSettings KeyboardSettings { get; set; } = new();
 
-    public List<RecordedAction> RecordedActions { get; set; } = new ();
+    public List<RecordedAction> RecordedActions { get; set; } = new();
 
-    public HotkeySettings HotkeySettings { get; set; } = new ();
+    public HotkeySettings HotkeySettings { get; set; } = new();
 }
 
 public class HotkeySettings

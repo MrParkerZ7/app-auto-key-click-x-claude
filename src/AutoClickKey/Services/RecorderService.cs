@@ -10,7 +10,7 @@ namespace AutoClickKey.Services;
 
 public class RecorderService
 {
-    private readonly List<RecordedAction> _recordedActions = new ();
+    private readonly List<RecordedAction> _recordedActions = new();
 
     private CancellationTokenSource? _recordCts;
     private CancellationTokenSource? _playCts;
