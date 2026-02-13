@@ -9,12 +9,31 @@
     <IsTestProject>true</IsTestProject>
   </PropertyGroup>
 
+  <!-- Code Coverage Settings -->
+  <PropertyGroup>
+    <CollectCoverage>true</CollectCoverage>
+    <CoverletOutputFormat>cobertura</CoverletOutputFormat>
+    <CoverletOutput>./coverage/</CoverletOutput>
+    <!-- Minimum coverage threshold (fails build if not met) -->
+    <Threshold>60</Threshold>
+    <ThresholdType>line</ThresholdType>
+    <ThresholdStat>total</ThresholdStat>
+    <!-- Exclude generated/untestable code -->
+    <ExcludeByFile>**/AssemblyInfo.cs,**/App.xaml.cs</ExcludeByFile>
+    <!-- Exclude Views, Win32 interop, and services requiring WPF dispatcher -->
+    <Exclude>[AutoClickKey]*Views*,[AutoClickKey]*Helpers.Win32Api*,[AutoClickKey]*ViewModels*,[AutoClickKey]*Services.HotkeyService*,[AutoClickKey]*Services.PositionPickerService*,[AutoClickKey]*Services.RecorderService*,[AutoClickKey]*Services.ClickerService*,[AutoClickKey]*Services.KeyboardService*,[AutoClickKey]*Services.ActionRunnerService*</Exclude>
+  </PropertyGroup>
+
   <ItemGroup>
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.10.0" />
     <PackageReference Include="xunit" Version="2.8.1" />
     <PackageReference Include="xunit.runner.visualstudio" Version="2.8.1">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="coverlet.msbuild" Version="6.0.2">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
     <PackageReference Include="coverlet.collector" Version="6.0.2">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
