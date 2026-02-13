@@ -3,6 +3,7 @@ using System.Collections.ObjectModel;
 using System.Linq;
 using System.Windows;
 using System.Windows.Input;
+using System.Windows.Threading;
 using AutoClickKey.Helpers;
 using AutoClickKey.Models;
 using AutoClickKey.Services;
@@ -15,8 +16,11 @@ public class MainViewModel : ViewModelBase, IDisposable
     private readonly ProfileService _profileService;
     private readonly HotkeyService _hotkeyService;
     private readonly PositionPickerService _positionPicker;
+    private readonly SettingsService _settingsService;
+    private readonly DispatcherTimer _saveDebounceTimer;
     private Window? _mainWindow;
     private bool _isLoading; // Prevent auto-save during load
+    private string? _originalProfileName; // Track loaded profile name for rename
 
     public MainViewModel()
     {
@@ -24,6 +28,15 @@ public class MainViewModel : ViewModelBase, IDisposable
         _profileService = new ProfileService();
         _hotkeyService = new HotkeyService();
         _positionPicker = new PositionPickerService();
+        _settingsService = new SettingsService();
+
+        // Setup debounce timer for auto-save (500ms delay)
+        _saveDebounceTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(500) };
+        _saveDebounceTimer.Tick += (_, _) =>
+        {
+            _saveDebounceTimer.Stop();
+            PerformAutoSave();
+        };
 
         // Setup position picker events
         _positionPicker.PositionPicked += (_, pos) =>
@@ -62,11 +75,49 @@ public class MainViewModel : ViewModelBase, IDisposable
         // Load profile names
         RefreshProfileList();
 
-        // Add default action
-        if (Actions.Count == 0)
+        // Load settings and last profile
+        LoadSettings();
+    }
+
+    private void LoadSettings()
+    {
+        var settings = _settingsService.Load();
+
+        // Restore hotkey
+        if (!string.IsNullOrEmpty(settings.LastHotkey) && AvailableHotkeys.Contains(settings.LastHotkey))
         {
+            _selectedHotkey = settings.LastHotkey;
+        }
+
+        // Load last profile
+        if (!string.IsNullOrEmpty(settings.LastProfileName) && ProfileNames.Contains(settings.LastProfileName))
+        {
+            LoadProfile(settings.LastProfileName);
+            _selectedProfileName = settings.LastProfileName;
+            OnPropertyChanged(nameof(SelectedProfileName));
+        }
+        else
+        {
+            // Start with empty new profile
             AddClickAction();
         }
+    }
+
+    public void SaveSettings()
+    {
+        // Flush any pending auto-save
+        if (_saveDebounceTimer.IsEnabled)
+        {
+            _saveDebounceTimer.Stop();
+            PerformAutoSave();
+        }
+
+        var settings = new AppSettings
+        {
+            LastProfileName = string.IsNullOrWhiteSpace(CurrentProfileName) ? null : CurrentProfileName,
+            LastHotkey = SelectedHotkey
+        };
+        _settingsService.Save(settings);
     }
 
     #region Properties
@@ -99,11 +150,17 @@ public class MainViewModel : ViewModelBase, IDisposable
     public bool IsKeyAction => SelectedAction?.Type == ActionItemType.KeyPress;
     public bool IsDelayAction => SelectedAction?.Type == ActionItemType.Delay;
 
-    private string _currentProfileName = "Untitled";
+    private string _currentProfileName = "";
     public string CurrentProfileName
     {
         get => _currentProfileName;
-        set => SetProperty(ref _currentProfileName, value);
+        set
+        {
+            if (SetProperty(ref _currentProfileName, value))
+            {
+                AutoSave();
+            }
+        }
     }
 
     private string? _selectedProfileName;
@@ -508,7 +565,24 @@ public class MainViewModel : ViewModelBase, IDisposable
     private void AutoSave()
     {
         if (_isLoading) return;
-        if (string.IsNullOrWhiteSpace(CurrentProfileName) || CurrentProfileName == "Untitled") return;
+
+        // Reset and start debounce timer
+        _saveDebounceTimer.Stop();
+        _saveDebounceTimer.Start();
+    }
+
+    private void PerformAutoSave()
+    {
+        if (_isLoading) return;
+        if (string.IsNullOrWhiteSpace(CurrentProfileName)) return;
+
+        // If renaming an existing profile, delete the old one first
+        if (!string.IsNullOrEmpty(_originalProfileName) &&
+            _originalProfileName != CurrentProfileName &&
+            ProfileNames.Contains(_originalProfileName))
+        {
+            _profileService.DeleteProfile(_originalProfileName);
+        }
 
         var profile = new Profile
         {
@@ -521,7 +595,15 @@ public class MainViewModel : ViewModelBase, IDisposable
         };
 
         _profileService.SaveProfile(profile);
+        _originalProfileName = CurrentProfileName; // Update original name after save
         RefreshProfileList();
+
+        // Update selected profile to match current
+        if (_selectedProfileName != CurrentProfileName)
+        {
+            _selectedProfileName = CurrentProfileName;
+            OnPropertyChanged(nameof(SelectedProfileName));
+        }
     }
 
     private void LoadProfile(string name)
@@ -539,6 +621,7 @@ public class MainViewModel : ViewModelBase, IDisposable
             }
 
             _currentProfileName = profile.Name;
+            _originalProfileName = profile.Name; // Track for rename
             OnPropertyChanged(nameof(CurrentProfileName));
             _loopActions = profile.LoopActions;
             OnPropertyChanged(nameof(LoopActions));
@@ -564,8 +647,20 @@ public class MainViewModel : ViewModelBase, IDisposable
 
         _profileService.DeleteProfile(SelectedProfileName);
         RefreshProfileList();
-        _selectedProfileName = null;
-        OnPropertyChanged(nameof(SelectedProfileName));
+
+        _isLoading = true;
+        try
+        {
+            _selectedProfileName = null;
+            OnPropertyChanged(nameof(SelectedProfileName));
+            _currentProfileName = "";
+            _originalProfileName = null;
+            OnPropertyChanged(nameof(CurrentProfileName));
+        }
+        finally
+        {
+            _isLoading = false;
+        }
     }
 
     private void NewProfile()
@@ -574,10 +669,15 @@ public class MainViewModel : ViewModelBase, IDisposable
         try
         {
             Actions.Clear();
-            CurrentProfileName = "Untitled";
-            LoopActions = true;
-            LoopCount = 10;
-            DelayBetweenLoops = 0;
+            _currentProfileName = "";
+            _originalProfileName = null; // New profile, no original
+            OnPropertyChanged(nameof(CurrentProfileName));
+            _loopActions = true;
+            OnPropertyChanged(nameof(LoopActions));
+            _loopCount = 10;
+            OnPropertyChanged(nameof(LoopCount));
+            _delayBetweenLoops = 0;
+            OnPropertyChanged(nameof(DelayBetweenLoops));
             SelectedAction = null;
             _selectedProfileName = null;
             OnPropertyChanged(nameof(SelectedProfileName));
@@ -593,6 +693,7 @@ public class MainViewModel : ViewModelBase, IDisposable
 
     public void Dispose()
     {
+        _saveDebounceTimer.Stop();
         _hotkeyService.Dispose();
         _positionPicker.Dispose();
     }
