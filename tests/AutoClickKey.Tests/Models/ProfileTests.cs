@@ -16,6 +16,7 @@ public class ProfileTests
         profile.LoopActions.Should().BeTrue();
         profile.LoopCount.Should().Be(1);
         profile.DelayBetweenLoops.Should().Be(0);
+        profile.DelayBetweenActions.Should().Be(0);
         profile.ClickerSettings.Should().NotBeNull();
         profile.KeyboardSettings.Should().NotBeNull();
         profile.RecordedActions.Should().NotBeNull().And.BeEmpty();
@@ -30,13 +31,15 @@ public class ProfileTests
             Name = "TestProfile",
             LoopActions = false,
             LoopCount = 5,
-            DelayBetweenLoops = 1000
+            DelayBetweenLoops = 1000,
+            DelayBetweenActions = 500
         };
 
         profile.Name.Should().Be("TestProfile");
         profile.LoopActions.Should().BeFalse();
         profile.LoopCount.Should().Be(5);
         profile.DelayBetweenLoops.Should().Be(1000);
+        profile.DelayBetweenActions.Should().Be(500);
     }
 
     [Fact]

@@ -19,6 +19,8 @@ public class Profile
 
     public int DelayBetweenLoops { get; set; } = 0;
 
+    public int DelayBetweenActions { get; set; } = 0;
+
     // Legacy support
     public ClickerSettings ClickerSettings { get; set; } = new();
 

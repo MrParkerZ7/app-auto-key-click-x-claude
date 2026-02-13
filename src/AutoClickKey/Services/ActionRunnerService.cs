@@ -22,7 +22,7 @@ public class ActionRunnerService
 
     public bool IsRunning => _isRunning;
 
-    public async Task RunAsync(IList<ActionItem> actions, bool loop, int loopCount, int delayBetweenLoops)
+    public async Task RunAsync(IList<ActionItem> actions, bool loop, int loopCount, int delayBetweenLoops, int delayBetweenActions = 0)
     {
         if (_isRunning || actions.Count == 0)
         {
@@ -68,10 +68,10 @@ public class ActionRunnerService
                         }
                     }
 
-                    // Delay after action (before next action)
-                    if (i < actions.Count - 1 && action.Type != ActionItemType.Delay)
+                    // Delay between actions (global setting)
+                    if (i < actions.Count - 1 && delayBetweenActions > 0)
                     {
-                        await Task.Delay(action.DelayMs, _cts.Token);
+                        await Task.Delay(delayBetweenActions, _cts.Token);
                     }
                 }
 

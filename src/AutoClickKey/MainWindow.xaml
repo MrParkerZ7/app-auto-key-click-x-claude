@@ -362,6 +362,9 @@
                 <TextBox Width="60" Style="{StaticResource InputStyle}"
                          Text="{Binding DelayBetweenLoops, UpdateSourceTrigger=PropertyChanged}"
                          IsEnabled="{Binding LoopActions}"/>
+                <TextBlock Text="Delay between actions (ms):" VerticalAlignment="Center" Margin="20,0,8,0"/>
+                <TextBox Width="60" Style="{StaticResource InputStyle}"
+                         Text="{Binding DelayBetweenActions, UpdateSourceTrigger=PropertyChanged}"/>
             </StackPanel>
         </Border>
 
