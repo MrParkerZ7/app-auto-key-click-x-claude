@@ -93,6 +93,7 @@ public class MainViewModel : ViewModelBase, IDisposable
         ExportProfileCommand = new RelayCommand(ExportProfile, () => Actions.Count > 0);
         ImportProfileCommand = new RelayCommand(ImportProfile);
         ExportAllProfilesCommand = new RelayCommand(ExportAllProfiles, () => ProfileNames.Count > 0);
+        ImportMultipleProfilesCommand = new RelayCommand(ImportMultipleProfiles);
 
         // Load profile names
         RefreshProfileList();
@@ -323,6 +324,8 @@ public class MainViewModel : ViewModelBase, IDisposable
     public ICommand ImportProfileCommand { get; }
 
     public ICommand ExportAllProfilesCommand { get; }
+
+    public ICommand ImportMultipleProfilesCommand { get; }
 
     public void InitializeHotkeys(Window window)
     {
@@ -923,6 +926,32 @@ public class MainViewModel : ViewModelBase, IDisposable
             {
                 AutoSave();
             }
+        }
+    }
+
+    private void ImportMultipleProfiles()
+    {
+        var dialog = new OpenFileDialog
+        {
+            Filter = "JSON files (*.json)|*.json|All files (*.*)|*.*",
+            DefaultExt = ".json",
+            Multiselect = true,
+            Title = "Select profiles to import"
+        };
+
+        if (dialog.ShowDialog() == true)
+        {
+            foreach (var fileName in dialog.FileNames)
+            {
+                var profile = _profileService.ImportProfile(fileName);
+                if (profile != null && !string.IsNullOrWhiteSpace(profile.Name))
+                {
+                    _profileService.SaveProfile(profile);
+                }
+            }
+
+            RefreshProfileList();
+            (ExportAllProfilesCommand as RelayCommand)?.RaiseCanExecuteChanged();
         }
     }
 }

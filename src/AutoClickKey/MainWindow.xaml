@@ -354,6 +354,9 @@
                             <Button Content="Import" Style="{StaticResource ActionButtonStyle}"
                                     Command="{Binding ImportProfileCommand}"
                                     ToolTip="Import profile from file"/>
+                            <Button Content="Import All" Style="{StaticResource ActionButtonStyle}"
+                                    Command="{Binding ImportMultipleProfilesCommand}"
+                                    ToolTip="Import multiple profiles from files"/>
                         </StackPanel>
                     </StackPanel>
                 </GroupBox>
