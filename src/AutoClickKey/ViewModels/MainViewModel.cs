@@ -7,6 +7,9 @@ using System.Windows.Threading;
 using AutoClickKey.Helpers;
 using AutoClickKey.Models;
 using AutoClickKey.Services;
+using Application = System.Windows.Application;
+using OpenFileDialog = Microsoft.Win32.OpenFileDialog;
+using SaveFileDialog = Microsoft.Win32.SaveFileDialog;
 
 namespace AutoClickKey.ViewModels;
 
@@ -87,6 +90,9 @@ public class MainViewModel : ViewModelBase, IDisposable
         DeleteProfileCommand = new RelayCommand(DeleteSelectedProfile, () => !string.IsNullOrEmpty(SelectedProfileName));
         NewProfileCommand = new RelayCommand(NewProfile);
         PickPositionCommand = new RelayCommand(PickPosition);
+        ExportProfileCommand = new RelayCommand(ExportProfile, () => Actions.Count > 0);
+        ImportProfileCommand = new RelayCommand(ImportProfile);
+        ExportAllProfilesCommand = new RelayCommand(ExportAllProfiles, () => ProfileNames.Count > 0);
 
         // Load profile names
         RefreshProfileList();
@@ -311,6 +317,12 @@ public class MainViewModel : ViewModelBase, IDisposable
     public ICommand NewProfileCommand { get; }
 
     public ICommand PickPositionCommand { get; }
+
+    public ICommand ExportProfileCommand { get; }
+
+    public ICommand ImportProfileCommand { get; }
+
+    public ICommand ExportAllProfilesCommand { get; }
 
     public void InitializeHotkeys(Window window)
     {
@@ -798,6 +810,119 @@ public class MainViewModel : ViewModelBase, IDisposable
         finally
         {
             _isLoading = false;
+        }
+    }
+
+    private void ExportProfile()
+    {
+        var timestamp = DateTime.Now.ToString("yyyy-MM-dd HH-mm-ss");
+        var profileName = string.IsNullOrWhiteSpace(CurrentProfileName) ? "profile" : CurrentProfileName;
+        var dialog = new SaveFileDialog
+        {
+            Filter = "JSON files (*.json)|*.json|All files (*.*)|*.*",
+            DefaultExt = ".json",
+            FileName = $"{timestamp} {profileName}"
+        };
+
+        if (dialog.ShowDialog() == true)
+        {
+            var profile = new Profile
+            {
+                Name = CurrentProfileName,
+                Actions = Actions.ToList(),
+                LoopActions = LoopActions,
+                LoopCount = LoopCount,
+                DelayBetweenLoops = DelayBetweenLoops,
+                DelayBetweenActions = DelayBetweenActions,
+                RestoreMousePosition = RestoreMousePosition,
+                ModifiedAt = DateTime.Now
+            };
+
+            _profileService.ExportProfile(profile, dialog.FileName);
+        }
+    }
+
+    private void ExportAllProfiles()
+    {
+        var dialog = new System.Windows.Forms.FolderBrowserDialog
+        {
+            Description = "Select folder to export all profiles",
+            UseDescriptionForTitle = true
+        };
+
+        if (dialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
+        {
+            var timestamp = DateTime.Now.ToString("yyyy-MM-dd HH-mm-ss");
+            foreach (var profileName in ProfileNames)
+            {
+                var profile = _profileService.LoadProfile(profileName);
+                if (profile != null)
+                {
+                    var fileName = $"{timestamp} {profileName}.json";
+                    var filePath = System.IO.Path.Combine(dialog.SelectedPath, fileName);
+                    _profileService.ExportProfile(profile, filePath);
+                }
+            }
+        }
+    }
+
+    private void ImportProfile()
+    {
+        var dialog = new OpenFileDialog
+        {
+            Filter = "JSON files (*.json)|*.json|All files (*.*)|*.*",
+            DefaultExt = ".json"
+        };
+
+        if (dialog.ShowDialog() == true)
+        {
+            var profile = _profileService.ImportProfile(dialog.FileName);
+            if (profile == null)
+            {
+                return;
+            }
+
+            _isLoading = true;
+            try
+            {
+                Actions.Clear();
+                foreach (var action in profile.Actions)
+                {
+                    Actions.Add(action);
+                }
+
+                _currentProfileName = profile.Name;
+                _originalProfileName = null; // Treat as new profile
+                OnPropertyChanged(nameof(CurrentProfileName));
+                _loopActions = profile.LoopActions;
+                OnPropertyChanged(nameof(LoopActions));
+                _loopCount = profile.LoopCount;
+                OnPropertyChanged(nameof(LoopCount));
+                _delayBetweenLoops = profile.DelayBetweenLoops;
+                OnPropertyChanged(nameof(DelayBetweenLoops));
+                _delayBetweenActions = profile.DelayBetweenActions;
+                OnPropertyChanged(nameof(DelayBetweenActions));
+                _restoreMousePosition = profile.RestoreMousePosition;
+                OnPropertyChanged(nameof(RestoreMousePosition));
+
+                if (Actions.Count > 0)
+                {
+                    SelectedAction = Actions[0];
+                }
+
+                (ClearAllCommand as RelayCommand)?.RaiseCanExecuteChanged();
+                (ExportProfileCommand as RelayCommand)?.RaiseCanExecuteChanged();
+            }
+            finally
+            {
+                _isLoading = false;
+            }
+
+            // Auto-save imported profile if it has a name
+            if (!string.IsNullOrWhiteSpace(CurrentProfileName))
+            {
+                AutoSave();
+            }
         }
     }
 }
