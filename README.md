@@ -2,6 +2,8 @@
 
 A powerful Windows automation tool for mouse clicking and keyboard input automation, built with C# WPF.
 
+![AutoClickKey Screenshot](docs/screenshot.png)
+
 ## Features
 
 ### Auto Clicker
