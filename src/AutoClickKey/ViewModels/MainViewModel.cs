@@ -29,6 +29,7 @@ public class MainViewModel : ViewModelBase, IDisposable
     private int _loopCount = 10;
     private int _delayBetweenLoops;
     private int _delayBetweenActions;
+    private bool _restoreMousePosition;
     private bool _isRunning;
     private int _currentActionIndex;
     private int _currentLoopCount;
@@ -195,6 +196,18 @@ public class MainViewModel : ViewModelBase, IDisposable
         set
         {
             if (SetProperty(ref _delayBetweenActions, Math.Max(0, value)))
+            {
+                AutoSave();
+            }
+        }
+    }
+
+    public bool RestoreMousePosition
+    {
+        get => _restoreMousePosition;
+        set
+        {
+            if (SetProperty(ref _restoreMousePosition, value))
             {
                 AutoSave();
             }
@@ -596,7 +609,7 @@ public class MainViewModel : ViewModelBase, IDisposable
         CurrentLoopCount = 0;
 
         var enabledActions = Actions.Where(a => a.IsEnabled).ToList();
-        _ = _actionRunner.RunAsync(enabledActions, LoopActions, LoopCount, DelayBetweenLoops, DelayBetweenActions);
+        _ = _actionRunner.RunAsync(enabledActions, LoopActions, LoopCount, DelayBetweenLoops, DelayBetweenActions, RestoreMousePosition);
     }
 
     private void Stop()
@@ -675,6 +688,7 @@ public class MainViewModel : ViewModelBase, IDisposable
             LoopCount = LoopCount,
             DelayBetweenLoops = DelayBetweenLoops,
             DelayBetweenActions = DelayBetweenActions,
+            RestoreMousePosition = RestoreMousePosition,
             ModifiedAt = DateTime.Now
         };
 
@@ -718,6 +732,8 @@ public class MainViewModel : ViewModelBase, IDisposable
             OnPropertyChanged(nameof(DelayBetweenLoops));
             _delayBetweenActions = profile.DelayBetweenActions;
             OnPropertyChanged(nameof(DelayBetweenActions));
+            _restoreMousePosition = profile.RestoreMousePosition;
+            OnPropertyChanged(nameof(RestoreMousePosition));
 
             if (Actions.Count > 0)
             {
@@ -772,6 +788,8 @@ public class MainViewModel : ViewModelBase, IDisposable
             OnPropertyChanged(nameof(DelayBetweenLoops));
             _delayBetweenActions = 0;
             OnPropertyChanged(nameof(DelayBetweenActions));
+            _restoreMousePosition = false;
+            OnPropertyChanged(nameof(RestoreMousePosition));
             SelectedAction = null;
             _selectedProfileName = null;
             OnPropertyChanged(nameof(SelectedProfileName));

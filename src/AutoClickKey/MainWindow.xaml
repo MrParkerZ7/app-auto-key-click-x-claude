@@ -350,21 +350,27 @@
         </Grid>
 
         <!-- Loop Settings Bar -->
-        <Border Grid.Row="2" Background="#F5F5F5" Padding="10,8">
-            <StackPanel Orientation="Horizontal">
-                <CheckBox Content="Loop actions" IsChecked="{Binding LoopActions}"
-                          VerticalAlignment="Center" Margin="0,0,20,0"/>
-                <TextBlock Text="Loop count (0=infinite):" VerticalAlignment="Center" Margin="0,0,8,0"/>
-                <TextBox Width="60" Style="{StaticResource InputStyle}"
-                         Text="{Binding LoopCount, UpdateSourceTrigger=PropertyChanged}"
-                         IsEnabled="{Binding LoopActions}"/>
-                <TextBlock Text="Delay between loops (ms):" VerticalAlignment="Center" Margin="20,0,8,0"/>
-                <TextBox Width="60" Style="{StaticResource InputStyle}"
-                         Text="{Binding DelayBetweenLoops, UpdateSourceTrigger=PropertyChanged}"
-                         IsEnabled="{Binding LoopActions}"/>
-                <TextBlock Text="Delay between actions (ms):" VerticalAlignment="Center" Margin="20,0,8,0"/>
-                <TextBox Width="60" Style="{StaticResource InputStyle}"
-                         Text="{Binding DelayBetweenActions, UpdateSourceTrigger=PropertyChanged}"/>
+        <Border Grid.Row="2" Background="#F5F5F5" Padding="10,6">
+            <StackPanel>
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                    <CheckBox Content="Loop actions" IsChecked="{Binding LoopActions}"
+                              VerticalAlignment="Center" Margin="0,0,20,0"/>
+                    <TextBlock Text="Loop count (0=infinite):" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                    <TextBox Width="60" Style="{StaticResource InputStyle}"
+                             Text="{Binding LoopCount, UpdateSourceTrigger=PropertyChanged}"
+                             IsEnabled="{Binding LoopActions}"/>
+                    <TextBlock Text="Delay between loops (ms):" VerticalAlignment="Center" Margin="20,0,8,0"/>
+                    <TextBox Width="60" Style="{StaticResource InputStyle}"
+                             Text="{Binding DelayBetweenLoops, UpdateSourceTrigger=PropertyChanged}"
+                             IsEnabled="{Binding LoopActions}"/>
+                    <TextBlock Text="Delay between actions (ms):" VerticalAlignment="Center" Margin="20,0,8,0"/>
+                    <TextBox Width="60" Style="{StaticResource InputStyle}"
+                             Text="{Binding DelayBetweenActions, UpdateSourceTrigger=PropertyChanged}"/>
+                </StackPanel>
+                <CheckBox Content="Restore mouse position after finish"
+                          IsChecked="{Binding RestoreMousePosition}"
+                          VerticalAlignment="Center" Margin="0,2,0,0"
+                          ToolTip="Remember cursor position before starting and restore it when finished"/>
             </StackPanel>
         </Border>
 

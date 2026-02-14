@@ -21,6 +21,8 @@ public class Profile
 
     public int DelayBetweenActions { get; set; } = 0;
 
+    public bool RestoreMousePosition { get; set; } = false;
+
     // Legacy support
     public ClickerSettings ClickerSettings { get; set; } = new();
 

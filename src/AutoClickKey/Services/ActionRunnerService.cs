@@ -22,7 +22,7 @@ public class ActionRunnerService
 
     public bool IsRunning => _isRunning;
 
-    public async Task RunAsync(IList<ActionItem> actions, bool loop, int loopCount, int delayBetweenLoops, int delayBetweenActions = 0)
+    public async Task RunAsync(IList<ActionItem> actions, bool loop, int loopCount, int delayBetweenLoops, int delayBetweenActions = 0, bool restoreMousePosition = false)
     {
         if (_isRunning || actions.Count == 0)
         {
@@ -32,6 +32,13 @@ public class ActionRunnerService
         _isRunning = true;
         _cts = new CancellationTokenSource();
         var currentLoop = 0;
+
+        // Save mouse position before starting
+        Win32Api.POINT? savedPosition = null;
+        if (restoreMousePosition)
+        {
+            savedPosition = Win32Api.GetCursorPosition();
+        }
 
         try
         {
@@ -92,6 +99,12 @@ public class ActionRunnerService
         }
         finally
         {
+            // Restore mouse position if requested
+            if (savedPosition.HasValue)
+            {
+                Win32Api.SetCursorPos(savedPosition.Value.X, savedPosition.Value.Y);
+            }
+
             _isRunning = false;
             Stopped?.Invoke(this, EventArgs.Empty);
         }
