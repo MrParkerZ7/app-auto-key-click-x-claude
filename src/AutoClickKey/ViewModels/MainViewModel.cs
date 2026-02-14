@@ -15,6 +15,8 @@ namespace AutoClickKey.ViewModels;
 
 public class MainViewModel : ViewModelBase, IDisposable
 {
+    private const int DoublePressThresholdMs = 300;
+
     private readonly ActionRunnerService _actionRunner;
     private readonly ProfileService _profileService;
     private readonly HotkeyService _hotkeyService;
@@ -34,12 +36,14 @@ public class MainViewModel : ViewModelBase, IDisposable
     private int _delayBetweenActions;
     private bool _restoreMousePosition;
     private bool _isRunning;
+    private bool _isPaused;
     private int _currentActionIndex;
     private int _currentLoopCount;
     private string _statusText = "Ready - Press F4 to Start";
     private bool _isPickingPosition;
     private string _selectedHotkey = "F4";
     private int _toggleHotkeyId;
+    private DateTime _lastHotkeyPressTime = DateTime.MinValue;
 
     public MainViewModel()
     {
@@ -75,7 +79,15 @@ public class MainViewModel : ViewModelBase, IDisposable
                 CurrentLoopCount = e.LoopCount;
             });
         _actionRunner.Stopped += (_, _) =>
-            Application.Current.Dispatcher.Invoke(() => IsRunning = false);
+            Application.Current.Dispatcher.Invoke(() =>
+            {
+                IsRunning = false;
+                IsPaused = false;
+            });
+        _actionRunner.Paused += (_, _) =>
+            Application.Current.Dispatcher.Invoke(() => IsPaused = true);
+        _actionRunner.Resumed += (_, _) =>
+            Application.Current.Dispatcher.Invoke(() => IsPaused = false);
 
         // Setup commands
         ToggleCommand = new RelayCommand(Toggle);
@@ -234,7 +246,31 @@ public class MainViewModel : ViewModelBase, IDisposable
         }
     }
 
-    public string ToggleButtonText => IsRunning ? $"Stop ({SelectedHotkey})" : $"Start ({SelectedHotkey})";
+    public bool IsPaused
+    {
+        get => _isPaused;
+        set
+        {
+            if (SetProperty(ref _isPaused, value))
+            {
+                UpdateStatusText();
+                OnPropertyChanged(nameof(ToggleButtonText));
+            }
+        }
+    }
+
+    public string ToggleButtonText
+    {
+        get
+        {
+            if (IsRunning && IsPaused)
+            {
+                return $"Resume ({SelectedHotkey})";
+            }
+
+            return IsRunning ? $"Pause ({SelectedHotkey})" : $"Start ({SelectedHotkey})";
+        }
+    }
 
     public int CurrentActionIndex
     {
@@ -602,14 +638,43 @@ public class MainViewModel : ViewModelBase, IDisposable
 
     private void Toggle()
     {
-        if (IsRunning)
+        var now = DateTime.Now;
+        var timeSinceLastPress = (now - _lastHotkeyPressTime).TotalMilliseconds;
+        _lastHotkeyPressTime = now;
+
+        // Double-press detected: stop completely
+        if (timeSinceLastPress <= DoublePressThresholdMs && IsRunning)
         {
             Stop();
+            return;
+        }
+
+        // Single press: start/pause/resume
+        if (IsRunning)
+        {
+            if (IsPaused)
+            {
+                Resume();
+            }
+            else
+            {
+                Pause();
+            }
         }
         else
         {
             Start();
         }
+    }
+
+    private void Pause()
+    {
+        _actionRunner.Pause();
+    }
+
+    private void Resume()
+    {
+        _actionRunner.Resume();
     }
 
     private void Start()
@@ -639,9 +704,13 @@ public class MainViewModel : ViewModelBase, IDisposable
         {
             StatusText = "Click anywhere to pick position (Esc to cancel)";
         }
+        else if (IsRunning && IsPaused)
+        {
+            StatusText = $"Paused - Loop {CurrentLoopCount} - Press {SelectedHotkey} to Resume, double-press to Stop";
+        }
         else if (IsRunning)
         {
-            StatusText = $"Running... Loop {CurrentLoopCount} - Press {SelectedHotkey} to Stop";
+            StatusText = $"Running... Loop {CurrentLoopCount} - Press {SelectedHotkey} to Pause, double-press to Stop";
         }
         else
         {

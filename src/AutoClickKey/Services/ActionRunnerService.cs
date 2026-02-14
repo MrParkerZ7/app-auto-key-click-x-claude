@@ -13,14 +13,23 @@ public class ActionRunnerService
     private const ushort VKALT = 0x12;
     private const ushort VKSHIFT = 0x10;
 
+    private readonly ManualResetEventSlim _pauseEvent = new(true);
+
     private CancellationTokenSource? _cts;
     private bool _isRunning;
+    private bool _isPaused;
 
     public event EventHandler<(int ActionIndex, int LoopCount)>? ActionExecuted;
 
     public event EventHandler? Stopped;
 
+    public event EventHandler? Paused;
+
+    public event EventHandler? Resumed;
+
     public bool IsRunning => _isRunning;
+
+    public bool IsPaused => _isPaused;
 
     public async Task RunAsync(IList<ActionItem> actions, bool loop, int loopCount, int delayBetweenLoops, int delayBetweenActions = 0, bool restoreMousePosition = false)
     {
@@ -53,6 +62,9 @@ public class ActionRunnerService
                         break;
                     }
 
+                    // Wait if paused
+                    await WaitIfPausedAsync(_cts.Token);
+
                     var action = actions[i];
                     if (!action.IsEnabled)
                     {
@@ -65,6 +77,9 @@ public class ActionRunnerService
                         {
                             break;
                         }
+
+                        // Wait if paused
+                        await WaitIfPausedAsync(_cts.Token);
 
                         await ExecuteActionAsync(action, _cts.Token);
                         ActionExecuted?.Invoke(this, (i, currentLoop));
@@ -106,13 +121,37 @@ public class ActionRunnerService
             }
 
             _isRunning = false;
+            _isPaused = false;
+            _pauseEvent.Set();
             Stopped?.Invoke(this, EventArgs.Empty);
         }
     }
 
     public void Stop()
     {
+        _isPaused = false;
+        _pauseEvent.Set(); // Unblock if paused so cancellation can proceed
         _cts?.Cancel();
+    }
+
+    public void Pause()
+    {
+        if (_isRunning && !_isPaused)
+        {
+            _isPaused = true;
+            _pauseEvent.Reset();
+            Paused?.Invoke(this, EventArgs.Empty);
+        }
+    }
+
+    public void Resume()
+    {
+        if (_isRunning && _isPaused)
+        {
+            _isPaused = false;
+            _pauseEvent.Set();
+            Resumed?.Invoke(this, EventArgs.Empty);
+        }
     }
 
     private static ushort ParseKeyCode(string key)
@@ -245,6 +284,14 @@ public class ActionRunnerService
         if (action.UseCtrl)
         {
             Win32Api.KeyUp(VKCONTROL);
+        }
+    }
+
+    private async Task WaitIfPausedAsync(CancellationToken ct)
+    {
+        while (_isPaused && !ct.IsCancellationRequested)
+        {
+            await Task.Run(() => _pauseEvent.Wait(ct), ct);
         }
     }
 }
