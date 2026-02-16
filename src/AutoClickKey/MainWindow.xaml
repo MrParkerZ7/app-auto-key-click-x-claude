@@ -4,6 +4,7 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:vm="clr-namespace:AutoClickKey.ViewModels"
+        xmlns:helpers="clr-namespace:AutoClickKey.Helpers"
         mc:Ignorable="d"
         Title="AutoClickKey"
         Icon="Assets/app-icon-v1.png"
@@ -21,6 +22,8 @@
 
     <Window.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVis"/>
+        <helpers:BoolToWorkspaceWidthConverter x:Key="BoolToWorkspaceWidth"/>
+        <helpers:NullToCollapsedConverter x:Key="NullToCollapsed"/>
 
         <Style x:Key="GroupBoxStyle" TargetType="GroupBox">
             <Setter Property="Margin" Value="5"/>
@@ -66,10 +69,19 @@
 
         <!-- Header -->
         <Border Grid.Row="0" Background="#2D2D30" Padding="10">
-            <TextBlock Text="AutoClickKey"
-                       FontSize="20"
-                       FontWeight="Bold"
-                       Foreground="White"/>
+            <Grid>
+                <TextBlock Text="AutoClickKey"
+                           FontSize="20"
+                           FontWeight="Bold"
+                           Foreground="White"
+                           VerticalAlignment="Center"/>
+                <ToggleButton Content="Workspace Mode"
+                              IsChecked="{Binding IsWorkspaceModeEnabled}"
+                              HorizontalAlignment="Right"
+                              VerticalAlignment="Center"
+                              Padding="12,6"
+                              FontWeight="SemiBold"/>
+            </Grid>
         </Border>
 
         <!-- Main Content -->
@@ -77,6 +89,7 @@
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" MinWidth="300"/>
                 <ColumnDefinition Width="320"/>
+                <ColumnDefinition Width="{Binding IsWorkspaceModeEnabled, Converter={StaticResource BoolToWorkspaceWidth}}"/>
             </Grid.ColumnDefinitions>
 
             <!-- Action List Panel -->
@@ -361,6 +374,171 @@
                     </StackPanel>
                 </GroupBox>
             </Grid>
+
+            <!-- Workspace Panel (Column 2) -->
+            <GroupBox Grid.Column="2" Header="Workspace" Margin="5,0,0,0"
+                      Visibility="{Binding IsWorkspaceModeEnabled, Converter={StaticResource BoolToVis}}"
+                      DataContext="{Binding WorkspaceViewModel}">
+                <Grid Visibility="{Binding Converter={StaticResource NullToCollapsed}}">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <!-- Workspace Name & Selection -->
+                    <StackPanel Grid.Row="0">
+                        <Grid Margin="0,0,0,8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Text="Name:" Style="{StaticResource LabelStyle}"/>
+                            <TextBox Grid.Column="1" Style="{StaticResource InputStyle}"
+                                     Text="{Binding CurrentWorkspaceName, UpdateSourceTrigger=PropertyChanged}"/>
+                        </Grid>
+                        <ComboBox Style="{StaticResource ComboStyle}"
+                                  ItemsSource="{Binding WorkspaceNames}"
+                                  SelectedItem="{Binding SelectedWorkspaceName}"/>
+                        <StackPanel Orientation="Horizontal" Margin="0,4,0,8">
+                            <Button Content="New" Style="{StaticResource ActionButtonStyle}"
+                                    Command="{Binding NewWorkspaceCommand}"/>
+                            <Button Content="Save" Style="{StaticResource ActionButtonStyle}"
+                                    Command="{Binding SaveWorkspaceCommand}"/>
+                            <Button Content="Delete" Style="{StaticResource ActionButtonStyle}"
+                                    Command="{Binding DeleteWorkspaceCommand}"/>
+                        </StackPanel>
+                    </StackPanel>
+
+                    <!-- Jobs List -->
+                    <Grid Grid.Row="1">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+
+                        <TextBlock Grid.Row="0" Text="Jobs:" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                        <ListBox Grid.Row="1"
+                                 ItemsSource="{Binding Jobs}"
+                                 SelectedItem="{Binding SelectedJob}"
+                                 MinHeight="100">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <StackPanel Orientation="Horizontal">
+                                        <CheckBox IsChecked="{Binding IsEnabled}" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                        <TextBlock Text="{Binding Name}" VerticalAlignment="Center"/>
+                                        <TextBlock Text=" (" Foreground="Gray"/>
+                                        <TextBlock Text="{Binding ProfileNames.Count}" Foreground="Gray"/>
+                                        <TextBlock Text=" profiles)" Foreground="Gray"/>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                        <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,4,0,8">
+                            <Button Style="{StaticResource SmallButtonStyle}" Content="+"
+                                    Command="{Binding AddJobCommand}" ToolTip="Add Job"/>
+                            <Button Style="{StaticResource SmallButtonStyle}" Content="▲"
+                                    Command="{Binding MoveJobUpCommand}" ToolTip="Move Up"/>
+                            <Button Style="{StaticResource SmallButtonStyle}" Content="▼"
+                                    Command="{Binding MoveJobDownCommand}" ToolTip="Move Down"/>
+                            <Button Style="{StaticResource SmallButtonStyle}" Content="✕"
+                                    Command="{Binding RemoveJobCommand}" ToolTip="Remove Job"/>
+                        </StackPanel>
+
+                        <!-- Job Profiles -->
+                        <TextBlock Grid.Row="3" Text="Profiles in Selected Job:" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                        <Grid Grid.Row="4">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+
+                            <!-- Available Profiles -->
+                            <ListBox Grid.Column="0"
+                                     ItemsSource="{Binding AvailableProfiles}"
+                                     SelectedItem="{Binding SelectedAvailableProfile}"
+                                     MinHeight="80"/>
+
+                            <!-- Add/Remove Buttons -->
+                            <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="4,0">
+                                <Button Padding="8,4" Margin="0,2"
+                                        Command="{Binding AddProfileToJobCommand}"
+                                        ToolTip="Add profile to job">
+                                    <TextBlock Text="&gt;"/>
+                                </Button>
+                                <Button Padding="8,4" Margin="0,2"
+                                        Command="{Binding RemoveProfileFromJobCommand}"
+                                        ToolTip="Remove profile from job">
+                                    <TextBlock Text="&lt;"/>
+                                </Button>
+                            </StackPanel>
+
+                            <!-- Job Profiles (Ordered) -->
+                            <ListBox Grid.Column="2"
+                                     ItemsSource="{Binding SelectedJobProfiles}"
+                                     SelectedItem="{Binding SelectedJobProfile}"
+                                     MinHeight="80"/>
+                        </Grid>
+                        <StackPanel Grid.Row="5" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,4,0,0">
+                            <Button Style="{StaticResource SmallButtonStyle}" Content="▲"
+                                    Command="{Binding MoveProfileUpCommand}" ToolTip="Move Profile Up"/>
+                            <Button Style="{StaticResource SmallButtonStyle}" Content="▼"
+                                    Command="{Binding MoveProfileDownCommand}" ToolTip="Move Profile Down"/>
+                        </StackPanel>
+                    </Grid>
+
+                    <!-- Workspace Settings -->
+                    <StackPanel Grid.Row="2" Margin="0,8,0,0">
+                        <CheckBox Content="Loop workspace" IsChecked="{Binding LoopWorkspace}" Margin="0,0,0,4"/>
+                        <Grid Margin="0,0,0,4">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="60"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Text="Loop count (0=infinite):" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                            <TextBox Grid.Column="1" Style="{StaticResource InputStyle}"
+                                     Text="{Binding WorkspaceLoopCount, UpdateSourceTrigger=PropertyChanged}"
+                                     IsEnabled="{Binding LoopWorkspace}"/>
+                        </Grid>
+                        <Grid Margin="0,0,0,4">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="60"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Text="Delay between jobs (ms):" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                            <TextBox Grid.Column="1" Style="{StaticResource InputStyle}"
+                                     Text="{Binding DelayBetweenJobs, UpdateSourceTrigger=PropertyChanged}"/>
+                        </Grid>
+                    </StackPanel>
+
+                    <!-- Run Workspace -->
+                    <StackPanel Grid.Row="3" Margin="0,8,0,0">
+                        <TextBlock Text="{Binding StatusText}" FontSize="11" Foreground="Gray" TextWrapping="Wrap" Margin="0,0,0,4"/>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <Button Grid.Column="0"
+                                    Content="{Binding RunButtonText}"
+                                    Padding="12,8"
+                                    FontWeight="Bold"
+                                    Command="{Binding RunWorkspaceCommand}"/>
+                            <Button Grid.Column="1"
+                                    Content="Stop"
+                                    Padding="12,8"
+                                    Margin="4,0,0,0"
+                                    Command="{Binding StopWorkspaceCommand}"/>
+                        </Grid>
+                    </StackPanel>
+                </Grid>
+            </GroupBox>
         </Grid>
 
         <!-- Loop Settings Bar -->

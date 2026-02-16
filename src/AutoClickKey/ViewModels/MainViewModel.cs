@@ -22,6 +22,8 @@ public class MainViewModel : ViewModelBase, IDisposable
     private readonly HotkeyService _hotkeyService;
     private readonly PositionPickerService _positionPicker;
     private readonly SettingsService _settingsService;
+    private readonly WorkspaceService _workspaceService;
+    private readonly WorkspaceRunnerService _workspaceRunner;
     private readonly DispatcherTimer _saveDebounceTimer;
 
     private Window? _mainWindow;
@@ -44,6 +46,8 @@ public class MainViewModel : ViewModelBase, IDisposable
     private string _selectedHotkey = "F4";
     private int _toggleHotkeyId;
     private DateTime _lastHotkeyPressTime = DateTime.MinValue;
+    private bool _isWorkspaceModeEnabled;
+    private WorkspaceViewModel? _workspaceViewModel;
 
     public MainViewModel()
     {
@@ -52,6 +56,8 @@ public class MainViewModel : ViewModelBase, IDisposable
         _hotkeyService = new HotkeyService();
         _positionPicker = new PositionPickerService();
         _settingsService = new SettingsService();
+        _workspaceService = new WorkspaceService();
+        _workspaceRunner = new WorkspaceRunnerService(_actionRunner, _profileService);
 
         // Setup debounce timer for auto-save (500ms delay)
         _saveDebounceTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(500) };
@@ -106,6 +112,7 @@ public class MainViewModel : ViewModelBase, IDisposable
         ImportProfileCommand = new RelayCommand(ImportProfile);
         ExportAllProfilesCommand = new RelayCommand(ExportAllProfiles, () => ProfileNames.Count > 0);
         ImportMultipleProfilesCommand = new RelayCommand(ImportMultipleProfiles);
+        ToggleWorkspaceModeCommand = new RelayCommand(ToggleWorkspaceMode);
 
         // Load profile names
         RefreshProfileList();
@@ -362,6 +369,29 @@ public class MainViewModel : ViewModelBase, IDisposable
     public ICommand ExportAllProfilesCommand { get; }
 
     public ICommand ImportMultipleProfilesCommand { get; }
+
+    public ICommand ToggleWorkspaceModeCommand { get; }
+
+    public bool IsWorkspaceModeEnabled
+    {
+        get => _isWorkspaceModeEnabled;
+        set
+        {
+            if (SetProperty(ref _isWorkspaceModeEnabled, value))
+            {
+                if (value && _workspaceViewModel == null)
+                {
+                    _workspaceViewModel = new WorkspaceViewModel(_workspaceService, _profileService, _workspaceRunner);
+                }
+
+                _workspaceViewModel?.RefreshAvailableProfiles();
+                OnPropertyChanged(nameof(WorkspaceViewModel));
+                AdjustWindowWidth(value);
+            }
+        }
+    }
+
+    public WorkspaceViewModel? WorkspaceViewModel => _workspaceViewModel;
 
     public void InitializeHotkeys(Window window)
     {
@@ -641,6 +671,20 @@ public class MainViewModel : ViewModelBase, IDisposable
         var now = DateTime.Now;
         var timeSinceLastPress = (now - _lastHotkeyPressTime).TotalMilliseconds;
         _lastHotkeyPressTime = now;
+
+        // Route to workspace mode if enabled
+        if (IsWorkspaceModeEnabled && _workspaceViewModel != null)
+        {
+            // Double-press detected: stop completely
+            if (timeSinceLastPress <= DoublePressThresholdMs && _workspaceViewModel.IsRunning)
+            {
+                _workspaceViewModel.Stop();
+                return;
+            }
+
+            _workspaceViewModel.Toggle();
+            return;
+        }
 
         // Double-press detected: stop completely
         if (timeSinceLastPress <= DoublePressThresholdMs && IsRunning)
@@ -1021,6 +1065,30 @@ public class MainViewModel : ViewModelBase, IDisposable
 
             RefreshProfileList();
             (ExportAllProfilesCommand as RelayCommand)?.RaiseCanExecuteChanged();
+        }
+    }
+
+    private void ToggleWorkspaceMode()
+    {
+        IsWorkspaceModeEnabled = !IsWorkspaceModeEnabled;
+    }
+
+    private void AdjustWindowWidth(bool expanding)
+    {
+        if (_mainWindow == null)
+        {
+            return;
+        }
+
+        const int workspacePanelWidth = 360;
+
+        if (expanding)
+        {
+            _mainWindow.Width += workspacePanelWidth;
+        }
+        else
+        {
+            _mainWindow.Width -= workspacePanelWidth;
         }
     }
 }

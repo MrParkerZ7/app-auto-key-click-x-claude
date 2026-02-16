@@ -217,3 +217,69 @@ public class IndexToVisibilityConverterTests
         act.Should().Throw<NotImplementedException>();
     }
 }
+
+public class BoolToWorkspaceWidthConverterTests
+{
+    private readonly BoolToWorkspaceWidthConverter _converter = new();
+
+    [Fact]
+    public void Convert_ReturnsWidth350_WhenTrue()
+    {
+        var result = _converter.Convert(true, typeof(GridLength), null!, CultureInfo.InvariantCulture);
+        result.Should().Be(new GridLength(350));
+    }
+
+    [Fact]
+    public void Convert_ReturnsWidth0_WhenFalse()
+    {
+        var result = _converter.Convert(false, typeof(GridLength), null!, CultureInfo.InvariantCulture);
+        result.Should().Be(new GridLength(0));
+    }
+
+    [Fact]
+    public void Convert_ReturnsWidth0_WhenNotBool()
+    {
+        var result = _converter.Convert("string", typeof(GridLength), null!, CultureInfo.InvariantCulture);
+        result.Should().Be(new GridLength(0));
+    }
+
+    [Fact]
+    public void ConvertBack_ThrowsNotImplementedException()
+    {
+        Action act = () => _converter.ConvertBack(new GridLength(350), typeof(bool), null!, CultureInfo.InvariantCulture);
+        act.Should().Throw<NotImplementedException>();
+    }
+}
+
+public class NullToCollapsedConverterTests
+{
+    private readonly NullToCollapsedConverter _converter = new();
+
+    [Fact]
+    public void Convert_ReturnsCollapsed_WhenNull()
+    {
+        var result = _converter.Convert(null!, typeof(Visibility), null!, CultureInfo.InvariantCulture);
+        result.Should().Be(Visibility.Collapsed);
+    }
+
+    [Fact]
+    public void Convert_ReturnsVisible_WhenNotNull()
+    {
+        var result = _converter.Convert("any value", typeof(Visibility), null!, CultureInfo.InvariantCulture);
+        result.Should().Be(Visibility.Visible);
+    }
+
+    [Fact]
+    public void Convert_ReturnsVisible_WhenObject()
+    {
+        var result = _converter.Convert(new object(), typeof(Visibility), null!, CultureInfo.InvariantCulture);
+        result.Should().Be(Visibility.Visible);
+    }
+
+    [Fact]
+    public void ConvertBack_ThrowsNotImplementedException()
+    {
+        Action act = () => _converter.ConvertBack(Visibility.Visible, typeof(object), null!, CultureInfo.InvariantCulture);
+        act.Should().Throw<NotImplementedException>();
+    }
+}
