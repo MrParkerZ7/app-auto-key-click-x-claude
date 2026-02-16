@@ -398,14 +398,13 @@
                             <TextBox Grid.Column="1" Style="{StaticResource InputStyle}"
                                      Text="{Binding CurrentWorkspaceName, UpdateSourceTrigger=PropertyChanged}"/>
                         </Grid>
+                        <TextBlock Text="Auto-saves when name is set" FontSize="10" Foreground="Gray" Margin="0,0,0,8"/>
                         <ComboBox Style="{StaticResource ComboStyle}"
                                   ItemsSource="{Binding WorkspaceNames}"
                                   SelectedItem="{Binding SelectedWorkspaceName}"/>
                         <StackPanel Orientation="Horizontal" Margin="0,4,0,8">
                             <Button Content="New" Style="{StaticResource ActionButtonStyle}"
                                     Command="{Binding NewWorkspaceCommand}"/>
-                            <Button Content="Save" Style="{StaticResource ActionButtonStyle}"
-                                    Command="{Binding SaveWorkspaceCommand}"/>
                             <Button Content="Delete" Style="{StaticResource ActionButtonStyle}"
                                     Command="{Binding DeleteWorkspaceCommand}"/>
                         </StackPanel>
@@ -501,7 +500,7 @@
                                 <ColumnDefinition Width="Auto"/>
                                 <ColumnDefinition Width="60"/>
                             </Grid.ColumnDefinitions>
-                            <TextBlock Grid.Column="0" Text="Loop count (0=infinite):" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                            <TextBlock Grid.Column="0" Text="Loop count:" VerticalAlignment="Center" Margin="0,0,8,0"/>
                             <TextBox Grid.Column="1" Style="{StaticResource InputStyle}"
                                      Text="{Binding WorkspaceLoopCount, UpdateSourceTrigger=PropertyChanged}"
                                      IsEnabled="{Binding LoopWorkspace}"/>
@@ -547,7 +546,7 @@
                 <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
                     <CheckBox Content="Loop actions" IsChecked="{Binding LoopActions}"
                               VerticalAlignment="Center" Margin="0,0,20,0"/>
-                    <TextBlock Text="Loop count (0=infinite):" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                    <TextBlock Text="Loop count:" VerticalAlignment="Center" Margin="0,0,8,0"/>
                     <TextBox Width="60" Style="{StaticResource InputStyle}"
                              Text="{Binding LoopCount, UpdateSourceTrigger=PropertyChanged}"
                              IsEnabled="{Binding LoopActions}"/>
@@ -579,6 +578,10 @@
                            VerticalAlignment="Center" FontWeight="SemiBold"/>
 
                 <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="0,0,8,0">
+                    <CheckBox Content="Shutdown after done"
+                              IsChecked="{Binding ShutdownAfterComplete}"
+                              VerticalAlignment="Center" Margin="0,0,20,0"
+                              ToolTip="Shutdown computer after automation completes (60s countdown with cancel option)"/>
                     <TextBlock Text="Hotkey:" VerticalAlignment="Center" Margin="0,0,8,0"/>
                     <ComboBox ItemsSource="{Binding AvailableHotkeys}"
                               SelectedItem="{Binding SelectedHotkey}"

@@ -7,6 +7,7 @@ using System.Windows.Threading;
 using AutoClickKey.Helpers;
 using AutoClickKey.Models;
 using AutoClickKey.Services;
+using AutoClickKey.Views;
 using Application = System.Windows.Application;
 using OpenFileDialog = Microsoft.Win32.OpenFileDialog;
 using SaveFileDialog = Microsoft.Win32.SaveFileDialog;
@@ -48,6 +49,7 @@ public class MainViewModel : ViewModelBase, IDisposable
     private DateTime _lastHotkeyPressTime = DateTime.MinValue;
     private bool _isWorkspaceModeEnabled;
     private WorkspaceViewModel? _workspaceViewModel;
+    private bool _shutdownAfterComplete;
 
     public MainViewModel()
     {
@@ -58,6 +60,14 @@ public class MainViewModel : ViewModelBase, IDisposable
         _settingsService = new SettingsService();
         _workspaceService = new WorkspaceService();
         _workspaceRunner = new WorkspaceRunnerService(_actionRunner, _profileService);
+        _workspaceRunner.Stopped += (_, _) =>
+            Application.Current.Dispatcher.Invoke(() =>
+            {
+                if (IsWorkspaceModeEnabled)
+                {
+                    HandleCompletionShutdown();
+                }
+            });
 
         // Setup debounce timer for auto-save (500ms delay)
         _saveDebounceTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(500) };
@@ -89,6 +99,10 @@ public class MainViewModel : ViewModelBase, IDisposable
             {
                 IsRunning = false;
                 IsPaused = false;
+                if (!IsWorkspaceModeEnabled)
+                {
+                    HandleCompletionShutdown();
+                }
             });
         _actionRunner.Paused += (_, _) =>
             Application.Current.Dispatcher.Invoke(() => IsPaused = true);
@@ -338,6 +352,12 @@ public class MainViewModel : ViewModelBase, IDisposable
         "F12"
     ];
 
+    public bool ShutdownAfterComplete
+    {
+        get => _shutdownAfterComplete;
+        set => SetProperty(ref _shutdownAfterComplete, value);
+    }
+
     public ICommand ToggleCommand { get; }
 
     public ICommand AddClickCommand { get; }
@@ -381,7 +401,8 @@ public class MainViewModel : ViewModelBase, IDisposable
             {
                 if (value && _workspaceViewModel == null)
                 {
-                    _workspaceViewModel = new WorkspaceViewModel(_workspaceService, _profileService, _workspaceRunner);
+                    var settings = _settingsService.Load();
+                    _workspaceViewModel = new WorkspaceViewModel(_workspaceService, _profileService, _workspaceRunner, settings.LastWorkspaceName);
                 }
 
                 _workspaceViewModel?.RefreshAvailableProfiles();
@@ -417,7 +438,10 @@ public class MainViewModel : ViewModelBase, IDisposable
         var settings = new AppSettings
         {
             LastProfileName = string.IsNullOrWhiteSpace(CurrentProfileName) ? null : CurrentProfileName,
-            LastHotkey = SelectedHotkey
+            LastHotkey = SelectedHotkey,
+            LastWorkspaceName = _workspaceViewModel != null && !string.IsNullOrWhiteSpace(_workspaceViewModel.CurrentWorkspaceName)
+                ? _workspaceViewModel.CurrentWorkspaceName
+                : null
         };
         _settingsService.Save(settings);
     }
@@ -1089,6 +1113,26 @@ public class MainViewModel : ViewModelBase, IDisposable
         else
         {
             _mainWindow.Width -= workspacePanelWidth;
+        }
+    }
+
+    private void HandleCompletionShutdown()
+    {
+        if (!ShutdownAfterComplete)
+        {
+            return;
+        }
+
+        // Show countdown window with 60 seconds
+        var countdownWindow = new ShutdownCountdownWindow(60);
+        countdownWindow.StartCountdown();
+
+        var result = countdownWindow.ShowDialog();
+
+        if (result == true && !countdownWindow.WasCancelled)
+        {
+            // Shutdown the computer immediately
+            System.Diagnostics.Process.Start("shutdown", "/s /t 0");
         }
     }
 }

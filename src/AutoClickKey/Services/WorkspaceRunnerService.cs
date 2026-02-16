@@ -117,8 +117,7 @@ public class WorkspaceRunnerService
                     }
                 }
 
-                if (!workspace.LoopWorkspace ||
-                    (workspace.WorkspaceLoopCount > 0 && workspaceLoop >= workspace.WorkspaceLoopCount))
+                if (!workspace.LoopWorkspace || workspaceLoop >= workspace.WorkspaceLoopCount)
                 {
                     break;
                 }

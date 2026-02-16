@@ -10,6 +10,8 @@ public class AppSettings
     public string? LastProfileName { get; set; }
 
     public string? LastHotkey { get; set; }
+
+    public string? LastWorkspaceName { get; set; }
 }
 
 public class SettingsService

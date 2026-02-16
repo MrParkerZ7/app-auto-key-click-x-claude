@@ -97,7 +97,7 @@ public class ActionRunnerService
                     }
                 }
 
-                if (!loop || (loopCount > 0 && currentLoop >= loopCount))
+                if (!loop || currentLoop >= loopCount)
                 {
                     break;
                 }

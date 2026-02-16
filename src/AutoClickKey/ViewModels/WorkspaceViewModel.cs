@@ -2,6 +2,7 @@ using System;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Windows.Input;
+using System.Windows.Threading;
 using AutoClickKey.Helpers;
 using AutoClickKey.Models;
 using AutoClickKey.Services;
@@ -13,9 +14,11 @@ public class WorkspaceViewModel : ViewModelBase
     private readonly WorkspaceService _workspaceService;
     private readonly ProfileService _profileService;
     private readonly WorkspaceRunnerService _workspaceRunner;
+    private readonly DispatcherTimer _saveDebounceTimer;
 
     private string _currentWorkspaceName = string.Empty;
     private string? _selectedWorkspaceName;
+    private string? _originalWorkspaceName;
     private Job? _selectedJob;
     private string? _selectedAvailableProfile;
     private string? _selectedJobProfile;
@@ -25,14 +28,23 @@ public class WorkspaceViewModel : ViewModelBase
     private bool _isRunning;
     private bool _isPaused;
     private string _statusText = string.Empty;
+    private bool _isLoading;
 
-    public WorkspaceViewModel(WorkspaceService workspaceService, ProfileService profileService, WorkspaceRunnerService workspaceRunner)
+    public WorkspaceViewModel(WorkspaceService workspaceService, ProfileService profileService, WorkspaceRunnerService workspaceRunner, string? lastWorkspaceName = null)
     {
         _workspaceService = workspaceService;
         _profileService = profileService;
         _workspaceRunner = workspaceRunner;
 
+        _saveDebounceTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(500) };
+        _saveDebounceTimer.Tick += (_, _) =>
+        {
+            _saveDebounceTimer.Stop();
+            PerformAutoSave();
+        };
+
         Jobs = new ObservableCollection<Job>();
+        Jobs.CollectionChanged += (_, _) => AutoSave();
         WorkspaceNames = new ObservableCollection<string>();
         AvailableProfiles = new ObservableCollection<string>();
         SelectedJobProfiles = new ObservableCollection<string>();
@@ -70,6 +82,12 @@ public class WorkspaceViewModel : ViewModelBase
 
         RefreshWorkspaceList();
         RefreshAvailableProfiles();
+
+        // Load last workspace if available
+        if (!string.IsNullOrEmpty(lastWorkspaceName) && WorkspaceNames.Contains(lastWorkspaceName))
+        {
+            SelectedWorkspaceName = lastWorkspaceName;
+        }
     }
 
     public ObservableCollection<Job> Jobs { get; }
@@ -88,6 +106,7 @@ public class WorkspaceViewModel : ViewModelBase
             if (SetProperty(ref _currentWorkspaceName, value))
             {
                 (SaveWorkspaceCommand as RelayCommand)?.RaiseCanExecuteChanged();
+                AutoSave();
             }
         }
     }
@@ -156,19 +175,37 @@ public class WorkspaceViewModel : ViewModelBase
     public bool LoopWorkspace
     {
         get => _loopWorkspace;
-        set => SetProperty(ref _loopWorkspace, value);
+        set
+        {
+            if (SetProperty(ref _loopWorkspace, value))
+            {
+                AutoSave();
+            }
+        }
     }
 
     public int WorkspaceLoopCount
     {
         get => _workspaceLoopCount;
-        set => SetProperty(ref _workspaceLoopCount, Math.Max(0, value));
+        set
+        {
+            if (SetProperty(ref _workspaceLoopCount, Math.Max(0, value)))
+            {
+                AutoSave();
+            }
+        }
     }
 
     public int DelayBetweenJobs
     {
         get => _delayBetweenJobs;
-        set => SetProperty(ref _delayBetweenJobs, Math.Max(0, value));
+        set
+        {
+            if (SetProperty(ref _delayBetweenJobs, Math.Max(0, value)))
+            {
+                AutoSave();
+            }
+        }
     }
 
     public bool IsRunning
@@ -278,6 +315,7 @@ public class WorkspaceViewModel : ViewModelBase
     private void AddJob()
     {
         var job = new Job { Name = $"Job {Jobs.Count + 1}" };
+        job.PropertyChanged += (_, _) => AutoSave();
         Jobs.Add(job);
         SelectedJob = job;
         (RunWorkspaceCommand as RelayCommand)?.RaiseCanExecuteChanged();
@@ -320,6 +358,7 @@ public class WorkspaceViewModel : ViewModelBase
 
         (MoveJobUpCommand as RelayCommand)?.RaiseCanExecuteChanged();
         (MoveJobDownCommand as RelayCommand)?.RaiseCanExecuteChanged();
+        AutoSave();
     }
 
     private void MoveJobDown()
@@ -337,6 +376,7 @@ public class WorkspaceViewModel : ViewModelBase
 
         (MoveJobUpCommand as RelayCommand)?.RaiseCanExecuteChanged();
         (MoveJobDownCommand as RelayCommand)?.RaiseCanExecuteChanged();
+        AutoSave();
     }
 
     private void AddProfileToJob()
@@ -348,6 +388,7 @@ public class WorkspaceViewModel : ViewModelBase
 
         SelectedJob.ProfileNames.Add(SelectedAvailableProfile);
         RefreshSelectedJobProfiles();
+        AutoSave();
     }
 
     private void RemoveProfileFromJob()
@@ -365,6 +406,8 @@ public class WorkspaceViewModel : ViewModelBase
         {
             SelectedJobProfile = SelectedJobProfiles[Math.Min(index, SelectedJobProfiles.Count - 1)];
         }
+
+        AutoSave();
     }
 
     private void MoveProfileUp()
@@ -381,6 +424,7 @@ public class WorkspaceViewModel : ViewModelBase
             SelectedJob.ProfileNames.Insert(index - 1, SelectedJobProfile);
             RefreshSelectedJobProfiles();
             SelectedJobProfile = SelectedJobProfiles[index - 1];
+            AutoSave();
         }
     }
 
@@ -398,20 +442,35 @@ public class WorkspaceViewModel : ViewModelBase
             SelectedJob.ProfileNames.Insert(index + 1, SelectedJobProfile);
             RefreshSelectedJobProfiles();
             SelectedJobProfile = SelectedJobProfiles[index + 1];
+            AutoSave();
         }
     }
 
     private void NewWorkspace()
     {
-        Jobs.Clear();
-        CurrentWorkspaceName = string.Empty;
-        LoopWorkspace = false;
-        WorkspaceLoopCount = 1;
-        DelayBetweenJobs = 0;
-        SelectedJob = null;
-        _selectedWorkspaceName = null;
-        OnPropertyChanged(nameof(SelectedWorkspaceName));
-        (RunWorkspaceCommand as RelayCommand)?.RaiseCanExecuteChanged();
+        _isLoading = true;
+        try
+        {
+            Jobs.Clear();
+            _currentWorkspaceName = string.Empty;
+            _originalWorkspaceName = null;
+            OnPropertyChanged(nameof(CurrentWorkspaceName));
+            _loopWorkspace = false;
+            OnPropertyChanged(nameof(LoopWorkspace));
+            _workspaceLoopCount = 1;
+            OnPropertyChanged(nameof(WorkspaceLoopCount));
+            _delayBetweenJobs = 0;
+            OnPropertyChanged(nameof(DelayBetweenJobs));
+            SelectedJob = null;
+            _selectedWorkspaceName = null;
+            OnPropertyChanged(nameof(SelectedWorkspaceName));
+            (RunWorkspaceCommand as RelayCommand)?.RaiseCanExecuteChanged();
+            (SaveWorkspaceCommand as RelayCommand)?.RaiseCanExecuteChanged();
+        }
+        finally
+        {
+            _isLoading = false;
+        }
     }
 
     private void SaveWorkspace()
@@ -449,23 +508,38 @@ public class WorkspaceViewModel : ViewModelBase
             return;
         }
 
-        Jobs.Clear();
-        foreach (var job in workspace.Jobs)
+        _isLoading = true;
+        try
         {
-            Jobs.Add(job);
+            Jobs.Clear();
+            foreach (var job in workspace.Jobs)
+            {
+                job.PropertyChanged += (_, _) => AutoSave();
+                Jobs.Add(job);
+            }
+
+            _currentWorkspaceName = workspace.Name;
+            _originalWorkspaceName = workspace.Name;
+            OnPropertyChanged(nameof(CurrentWorkspaceName));
+            _loopWorkspace = workspace.LoopWorkspace;
+            OnPropertyChanged(nameof(LoopWorkspace));
+            _workspaceLoopCount = workspace.WorkspaceLoopCount;
+            OnPropertyChanged(nameof(WorkspaceLoopCount));
+            _delayBetweenJobs = workspace.DelayBetweenJobs;
+            OnPropertyChanged(nameof(DelayBetweenJobs));
+
+            if (Jobs.Count > 0)
+            {
+                SelectedJob = Jobs[0];
+            }
+
+            (RunWorkspaceCommand as RelayCommand)?.RaiseCanExecuteChanged();
+            (SaveWorkspaceCommand as RelayCommand)?.RaiseCanExecuteChanged();
         }
-
-        CurrentWorkspaceName = workspace.Name;
-        LoopWorkspace = workspace.LoopWorkspace;
-        WorkspaceLoopCount = workspace.WorkspaceLoopCount;
-        DelayBetweenJobs = workspace.DelayBetweenJobs;
-
-        if (Jobs.Count > 0)
+        finally
         {
-            SelectedJob = Jobs[0];
+            _isLoading = false;
         }
-
-        (RunWorkspaceCommand as RelayCommand)?.RaiseCanExecuteChanged();
     }
 
     private void DeleteWorkspace()
@@ -536,5 +610,57 @@ public class WorkspaceViewModel : ViewModelBase
 
         (MoveProfileUpCommand as RelayCommand)?.RaiseCanExecuteChanged();
         (MoveProfileDownCommand as RelayCommand)?.RaiseCanExecuteChanged();
+    }
+
+    private void AutoSave()
+    {
+        if (_isLoading)
+        {
+            return;
+        }
+
+        _saveDebounceTimer.Stop();
+        _saveDebounceTimer.Start();
+    }
+
+    private void PerformAutoSave()
+    {
+        if (_isLoading)
+        {
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(CurrentWorkspaceName))
+        {
+            return;
+        }
+
+        // If renaming an existing workspace, delete the old one first
+        if (!string.IsNullOrEmpty(_originalWorkspaceName) &&
+            _originalWorkspaceName != CurrentWorkspaceName &&
+            WorkspaceNames.Contains(_originalWorkspaceName))
+        {
+            _workspaceService.DeleteWorkspace(_originalWorkspaceName);
+        }
+
+        var workspace = new Workspace
+        {
+            Name = CurrentWorkspaceName,
+            Jobs = Jobs.ToList(),
+            LoopWorkspace = LoopWorkspace,
+            WorkspaceLoopCount = WorkspaceLoopCount,
+            DelayBetweenJobs = DelayBetweenJobs,
+            ModifiedAt = DateTime.Now
+        };
+
+        _workspaceService.SaveWorkspace(workspace);
+        _originalWorkspaceName = CurrentWorkspaceName;
+        RefreshWorkspaceList();
+
+        if (_selectedWorkspaceName != CurrentWorkspaceName)
+        {
+            _selectedWorkspaceName = CurrentWorkspaceName;
+            OnPropertyChanged(nameof(SelectedWorkspaceName));
+        }
     }
 }

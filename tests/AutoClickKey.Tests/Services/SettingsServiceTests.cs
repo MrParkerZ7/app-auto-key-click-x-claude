@@ -33,6 +33,7 @@ public class SettingsServiceTests
         result.Should().NotBeNull();
         result.LastProfileName.Should().BeNull();
         result.LastHotkey.Should().BeNull();
+        result.LastWorkspaceName.Should().BeNull();
     }
 
     [Fact]
